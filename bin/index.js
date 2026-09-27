@@ -6,6 +6,7 @@ const path = require('path');
 const detector = require('../src/detector');
 const scaffolder = require('../src/scaffolder');
 const stealth = require('../src/stealth');
+const configLoader = require('../src/config');
 
 const VALID_MODES = ['new', 'existing'];
 
@@ -54,7 +55,14 @@ async function main() {
   console.log(`[speckit-ai] ⚙️  Mode: ${mode === 'existing' ? 'existing (AI-PROMPT skeletons)' : 'new (Best Practices templates)'}`);
   console.log('');
 
-  // Step 1: Detect framework / structure
+  // Step 1: Config
+  const userConfig = configLoader.loadConfig(targetDir);
+  const customTemplatesDir = userConfig.templatesDir || null;
+  if (customTemplatesDir) {
+    console.log(`[speckit-ai] ⚙️  Custom templates dir: ${customTemplatesDir}`);
+  }
+
+  // Step 2: Detect framework / structure
   const projectConfig = detector.detect(targetDir);
   if (projectConfig.type === 'single') {
     console.log(`[speckit-ai] 🔍 Detected: ${projectConfig.framework} / ${projectConfig.packageManager}`);
@@ -63,14 +71,14 @@ async function main() {
   }
   console.log('');
 
-  // Step 2: Scaffold
+  // Step 3: Scaffold
   console.log('[speckit-ai] 📝 Creating documentation structure...');
-  const { created, skipped } = scaffolder.scaffold({ targetDir, projectConfig, mode });
+  const { created, skipped } = scaffolder.scaffold({ targetDir, projectConfig, mode, customTemplatesDir });
   console.log('');
   console.log(`[speckit-ai] ✅ ${created} file(s) created, ${skipped} file(s) skipped (already exist)`);
   console.log('');
 
-  // Step 3: Stealth mode
+  // Step 4: Stealth mode
   stealth.apply(targetDir);
   console.log('');
 

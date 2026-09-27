@@ -218,4 +218,24 @@ describe('scaffold()', () => {
     expect(fs.existsSync(path.join(tmpDir, 'docs', 'api', 'technology.md'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'docs', 'web', 'technology.md'))).toBe(true);
   });
+
+  // --- Custom Templates integration ---
+  test('sử dụng custom templates nếu được cấu hình', () => {
+    // Tạo custom template
+    const customTmplDir = path.join(tmpDir, 'my-templates');
+    const customCoreDir = path.join(customTmplDir, '_core');
+    fs.mkdirSync(customCoreDir, { recursive: true });
+    fs.writeFileSync(path.join(customCoreDir, 'CLAUDE.md.tmpl'), 'This is a custom CLAUDE {{FRAMEWORK}}');
+
+    scaffold({
+      targetDir: tmpDir,
+      projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' },
+      customTemplatesDir: customTmplDir
+    });
+
+    const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
+    expect(content).toBe('This is a custom CLAUDE NestJS'); // Dùng custom
+    // Các file không override (như AGENTS.md) vẫn đọc được từ default nhờ fallback
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'AGENTS.md'))).toBe(true);
+  });
 });

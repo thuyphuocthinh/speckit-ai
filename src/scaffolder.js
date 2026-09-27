@@ -36,12 +36,21 @@ function ensureDir(dirPath) {
 
 /**
  * Đọc nội dung template file.
+ * Ưu tiên đọc từ customTemplatesDir nếu có, nếu không thì đọc từ default TEMPLATES_DIR.
  * Trả về chuỗi rỗng nếu không tồn tại.
  */
-function readTemplate(templateRelPath) {
-  const fullPath = path.join(TEMPLATES_DIR, templateRelPath);
-  if (!fs.existsSync(fullPath)) return '';
-  return fs.readFileSync(fullPath, 'utf8');
+function readTemplate(templateRelPath, customTemplatesDir = null) {
+  if (customTemplatesDir) {
+    const customPath = path.join(customTemplatesDir, templateRelPath);
+    if (fs.existsSync(customPath)) {
+      return fs.readFileSync(customPath, 'utf8');
+    }
+  }
+
+  // Fallback về default
+  const defaultPath = path.join(TEMPLATES_DIR, templateRelPath);
+  if (!fs.existsSync(defaultPath)) return '';
+  return fs.readFileSync(defaultPath, 'utf8');
 }
 
 /**
@@ -99,7 +108,7 @@ function buildFileMap(framework, mode = 'new', scope = 'all') {
   return allFiles;
 }
 
-function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectName = null, scope = 'all' }) {
+function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectName = null, scope = 'all', customTemplatesDir = null }) {
   const vars = {
     FRAMEWORK: formatFrameworkName(framework),
     PACKAGE_MANAGER: packageManager,
@@ -126,10 +135,10 @@ function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectN
       dest = dest.replace('docs/', `${docsPrefix}/`);
     }
 
-    const rawContent = readTemplate(tmpl);
+    const rawContent = readTemplate(tmpl, customTemplatesDir);
     if (!rawContent) {
       const fallbackTmpl = tmpl.replace(/^[^/]+\//, 'generic/');
-      const fallbackContent = readTemplate(fallbackTmpl);
+      const fallbackContent = readTemplate(fallbackTmpl, customTemplatesDir);
       if (!fallbackContent) continue;
 
       const rendered = renderTemplate(fallbackContent, vars);
@@ -149,25 +158,25 @@ function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectN
 /**
  * Entry function: gọi scaffoldFiles dựa trên projectConfig (single hoặc monorepo).
  */
-function scaffold({ targetDir, projectConfig, mode = 'new' }) {
+function scaffold({ targetDir, projectConfig, mode = 'new', customTemplatesDir = null }) {
   let totalCreated = 0;
   let totalSkipped = 0;
 
   if (projectConfig.type === 'single') {
     const { framework, packageManager } = projectConfig;
-    const res = scaffoldFiles({ targetDir, framework, packageManager, mode });
+    const res = scaffoldFiles({ targetDir, framework, packageManager, mode, customTemplatesDir });
     totalCreated += res.created;
     totalSkipped += res.skipped;
   } else if (projectConfig.type === 'monorepo') {
     // 1. Root files
-    const resRoot = scaffoldFiles({ targetDir, framework: 'generic', packageManager: 'npm', mode, scope: 'rootOnly' });
+    const resRoot = scaffoldFiles({ targetDir, framework: 'generic', packageManager: 'npm', mode, scope: 'rootOnly', customTemplatesDir });
     totalCreated += resRoot.created;
     totalSkipped += resRoot.skipped;
 
     // 2. Docs cho từng subProject
     for (const sub of projectConfig.subProjects) {
       console.log(`\n[speckit-ai] 📦 Scaffolding sub-project: ${sub.name} (${formatFrameworkName(sub.framework)})`);
-      const resSub = scaffoldFiles({ targetDir, framework: sub.framework, packageManager: sub.packageManager, mode, subProjectName: sub.name, scope: 'docsOnly' });
+      const resSub = scaffoldFiles({ targetDir, framework: sub.framework, packageManager: sub.packageManager, mode, subProjectName: sub.name, scope: 'docsOnly', customTemplatesDir });
       totalCreated += resSub.created;
       totalSkipped += resSub.skipped;
     }
