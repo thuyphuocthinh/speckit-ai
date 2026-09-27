@@ -13,6 +13,7 @@ const hookManager = require('../src/hook');
 const llm = require('../src/llm');
 const generator = require('../src/generator');
 const linter = require('../src/linter');
+const docServer = require('../src/server');
 
 const VALID_MODES = ['new', 'existing', 'auto'];
 
@@ -32,6 +33,7 @@ Usage:
   npx speckit-ai [--mode=<mode>] [--init-hook]
   npx speckit-ai generate <type> "<title>"
   npx speckit-ai lint
+  npx speckit-ai serve
 
 Options:
   --mode=new       (default) Generate Best Practices templates for your framework
@@ -42,6 +44,7 @@ Options:
 
 Commands:
   lint                             Lint spec files against templates to ensure completeness
+  serve                            Start local documentation web server
   g, generate feature "<Title>"    Generate a new feature spec
   g, generate adr "<Title>"        Generate a new Architecture Decision Record
   g, generate contract "<Title>"   Generate a new API/Data Contract
@@ -90,6 +93,12 @@ async function main() {
     if (!passed) {
       process.exit(1);
     }
+    return;
+  }
+
+  // Handle serve command
+  if (rawArgs[0] === 'serve') {
+    docServer.serve(targetDir);
     return;
   }
 
