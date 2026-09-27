@@ -29,7 +29,7 @@ describe('hook.js - installHook()', () => {
     const result = installHook(tmpDir);
     
     expect(result).toBe(false);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Khong tim thay thu muc .git/hooks'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Could not find .git/hooks directory'));
     
     consoleSpy.mockRestore();
   });
@@ -49,7 +49,7 @@ describe('hook.js - installHook()', () => {
     const hookPath = path.join(gitHooksDir, 'pre-commit');
     expect(fs.existsSync(hookPath)).toBe(true);
     expect(fs.readFileSync(hookPath, 'utf8')).toBe(HOOK_CONTENT);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Cai dat Native Git Hook thanh cong'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Native Git Hook successfully installed'));
     
     consoleSpy.mockRestore();
   });
