@@ -90,12 +90,18 @@ function buildFileMap(framework, mode = 'new', scope = 'all') {
     { tmpl: docsTmpl('coding-conventions.md.tmpl')    || `${fw}/coding-conventions.md.tmpl`, dest: 'docs/core-principles-and-coding-standards/coding-conventions.md', isDoc: true },
     { tmpl: docsTmpl('coding-style.md.tmpl')          || '_core/coding-style.md.tmpl',   dest: 'docs/core-principles-and-coding-standards/coding-style.md', isDoc: true },
 
+    // docs/adrs/ — same in both modes
+    { tmpl: '_core/adrs/0000-template.md.tmpl',      dest: 'docs/adrs/0000-template.md', isDoc: true },
+
     // docs/instructions-and-work-flows/ — same in both modes
     { tmpl: '_core/workflow-adding-feature.md.tmpl', dest: 'docs/core-principles-and-coding-standards/instructions-and-work-flows/adding-a-new-feature.md', isDoc: true },
 
     // specs/ — same in both modes
     { tmpl: '_core/specs-template.md.tmpl',  dest: 'specs/_template.md', isDoc: false },
     { tmpl: '_core/specs-workflow.md.tmpl',  dest: 'specs/_workflow.md', isDoc: false },
+
+    // specs/contracts/ — same in both modes
+    { tmpl: '_core/contracts/_template.md.tmpl', dest: 'specs/contracts/_template.md', isDoc: false },
 
     // .agents/skills/ — same in both modes
     { tmpl: '_skills/spec-create/SKILL.md',  dest: '.agents/skills/spec-create/SKILL.md', isDoc: false },
