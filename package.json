@@ -21,9 +21,11 @@
     "start": "node bin/index.js",
     "test": "jest --forceExit",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --forceExit"
+    "test:coverage": "jest --coverage --forceExit",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "jest": "^29.7.0"
   },
   "jest": {
