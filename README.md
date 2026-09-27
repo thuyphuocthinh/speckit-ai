@@ -170,6 +170,20 @@ Options:
 
 ---
 
+## Releasing (For Maintainers)
+
+This project uses an automated GitHub Actions CI/CD pipeline for publishing.
+
+To release a new version to npm:
+1. Bump the version in `package.json` (e.g. `0.1.1`).
+2. Commit the change: `git commit -am "chore: release v0.1.1"`
+3. Tag the commit: `git tag v0.1.1`
+4. Push the tag: `git push origin v0.1.1`
+
+The pipeline will automatically run tests and publish the new version to npm with a Provenance badge.
+
+---
+
 ## License
 
 MIT © [Thuy Phuoc Thinh](https://github.com/thuyphuocthinh)
