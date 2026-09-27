@@ -3,6 +3,8 @@
 'use strict';
 
 const path = require('path');
+require('dotenv').config({ path: path.join(process.cwd(), '.env') });
+
 const detector = require('../src/detector');
 const scaffolder = require('../src/scaffolder');
 const stealth = require('../src/stealth');
