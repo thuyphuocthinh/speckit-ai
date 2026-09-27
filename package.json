@@ -1,5 +1,5 @@
 {
-  "name": "specfirst",
+  "name": "speckit-ai",
   "version": "0.1.0",
   "description": "Scaffold spec-driven AI workspace docs into any project — supports new & existing codebases.",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "bin": {
-    "specfirst": "./bin/index.js"
+    "speckit-ai": "./bin/index.js"
   },
   "files": [
     "bin/",
@@ -53,10 +53,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/thuyphuocthinh/specfirst.git"
+    "url": "https://github.com/thuyphuocthinh/speckit-ai.git"
   },
-  "homepage": "https://github.com/thuyphuocthinh/specfirst#readme",
+  "homepage": "https://github.com/thuyphuocthinh/speckit-ai#readme",
   "bugs": {
-    "url": "https://github.com/thuyphuocthinh/specfirst/issues"
+    "url": "https://github.com/thuyphuocthinh/speckit-ai/issues"
   }
 }

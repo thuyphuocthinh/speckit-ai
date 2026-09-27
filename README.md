@@ -1,6 +1,6 @@
-# specfirst
+# speckit-ai
 
-[![npm version](https://img.shields.io/npm/v/specfirst.svg)](https://www.npmjs.com/package/specfirst)
+[![npm version](https://img.shields.io/npm/v/speckit-ai.svg)](https://www.npmjs.com/package/speckit-ai)
 [![node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![license MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -12,10 +12,10 @@
 
 ```bash
 # New project — Best Practices docs for your framework
-npx specfirst
+npx speckit-ai
 
 # Existing project — AI-PROMPT skeletons for AI to fill in
-npx specfirst --mode=existing
+npx speckit-ai --mode=existing
 ```
 
 That's it. No config. No install. One command.
@@ -37,30 +37,30 @@ That's it. No config. No install. One command.
 
 ```bash
 cd my-new-project
-npx specfirst
+npx speckit-ai
 ```
 
 Auto-detects your framework and generates opinionated Best Practices docs:
 
 ```
-[specfirst] 🚀 Setting up AI-first workspace...
-[specfirst] 🔍 Detected: nextjs / npm
-[specfirst] 📝 Creating documentation structure...
-[specfirst]   [create] .agents/AGENTS.md
-[specfirst]   [create] docs/project-overview.md
-[specfirst]   [create] docs/technology.md
-[specfirst]   [create] docs/core-principles-and-coding-standards/structure.md
-[specfirst]   [create] docs/core-principles-and-coding-standards/coding-conventions.md
+[speckit-ai] 🚀 Setting up AI-first workspace...
+[speckit-ai] 🔍 Detected: nextjs / npm
+[speckit-ai] 📝 Creating documentation structure...
+[speckit-ai]   [create] .agents/AGENTS.md
+[speckit-ai]   [create] docs/project-overview.md
+[speckit-ai]   [create] docs/technology.md
+[speckit-ai]   [create] docs/core-principles-and-coding-standards/structure.md
+[speckit-ai]   [create] docs/core-principles-and-coding-standards/coding-conventions.md
 ...
-[specfirst] ✅ 14 file(s) created
-[specfirst] 🎉 Done!
+[speckit-ai] ✅ 14 file(s) created
+[speckit-ai] 🎉 Done!
 ```
 
 ### Existing project — AI-PROMPT mode
 
 ```bash
 cd /company/existing-project
-npx specfirst --mode=existing
+npx speckit-ai --mode=existing
 ```
 
 Generates skeleton docs with `<!-- AI-PROMPT: ... -->` markers. Then ask your AI agent:
@@ -153,7 +153,7 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 ## Options
 
 ```
-Usage: npx specfirst [--mode=<mode>]
+Usage: npx speckit-ai [--mode=<mode>]
 
 Options:
   --mode=new       (default) Best Practices templates for your framework

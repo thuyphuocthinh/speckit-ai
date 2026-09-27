@@ -19,10 +19,10 @@ function parseArgs(argv) {
 
   if (helpArg) {
     console.log(`
-specfirst — Scaffold spec-driven AI workspace docs
+speckit-ai — Scaffold spec-driven AI workspace docs
 
 Usage:
-  npx specfirst [--mode=<mode>]
+  npx speckit-ai [--mode=<mode>]
 
 Options:
   --mode=new       (default) Generate Best Practices templates for your framework
@@ -36,8 +36,8 @@ Options:
 
   const mode = modeArg.split('=')[1];
   if (!VALID_MODES.includes(mode)) {
-    console.error(`[specfirst] ❌ Invalid --mode="${mode}". Valid values: ${VALID_MODES.join(', ')}`);
-    console.error('[specfirst] Run with --help to see usage.');
+    console.error(`[speckit-ai] ❌ Invalid --mode="${mode}". Valid values: ${VALID_MODES.join(', ')}`);
+    console.error('[speckit-ai] Run with --help to see usage.');
     process.exit(1);
   }
 
@@ -49,21 +49,21 @@ async function main() {
   const targetDir = process.cwd();
 
   console.log('');
-  console.log('[specfirst] 🚀 Setting up AI-first workspace...');
-  console.log(`[specfirst] 📁 Directory: ${targetDir}`);
-  console.log(`[specfirst] ⚙️  Mode: ${mode === 'existing' ? 'existing (AI-PROMPT skeletons)' : 'new (Best Practices templates)'}`);
+  console.log('[speckit-ai] 🚀 Setting up AI-first workspace...');
+  console.log(`[speckit-ai] 📁 Directory: ${targetDir}`);
+  console.log(`[speckit-ai] ⚙️  Mode: ${mode === 'existing' ? 'existing (AI-PROMPT skeletons)' : 'new (Best Practices templates)'}`);
   console.log('');
 
   // Step 1: Detect framework
   const { framework, packageManager } = detector.detect(targetDir);
-  console.log(`[specfirst] 🔍 Detected: ${framework} / ${packageManager}`);
+  console.log(`[speckit-ai] 🔍 Detected: ${framework} / ${packageManager}`);
   console.log('');
 
   // Step 2: Scaffold
-  console.log('[specfirst] 📝 Creating documentation structure...');
+  console.log('[speckit-ai] 📝 Creating documentation structure...');
   const { created, skipped } = scaffolder.scaffold({ targetDir, framework, packageManager, mode });
   console.log('');
-  console.log(`[specfirst] ✅ ${created} file(s) created, ${skipped} file(s) skipped (already exist)`);
+  console.log(`[speckit-ai] ✅ ${created} file(s) created, ${skipped} file(s) skipped (already exist)`);
   console.log('');
 
   // Step 3: Stealth mode
@@ -71,16 +71,16 @@ async function main() {
   console.log('');
 
   // Done
-  console.log('[specfirst] 🎉 Done!');
+  console.log('[speckit-ai] 🎉 Done!');
   if (mode === 'existing') {
-    console.log('[specfirst] 👉 Next: ask your AI agent to read docs/ and fill in the AI-PROMPT sections based on the actual codebase.');
+    console.log('[speckit-ai] 👉 Next: ask your AI agent to read docs/ and fill in the AI-PROMPT sections based on the actual codebase.');
   } else {
-    console.log('[specfirst] 👉 Next: open .agents/AGENTS.md and adjust it for your project.');
+    console.log('[speckit-ai] 👉 Next: open .agents/AGENTS.md and adjust it for your project.');
   }
   console.log('');
 }
 
 main().catch((err) => {
-  console.error('[specfirst] ❌ Error:', err.message);
+  console.error('[speckit-ai] ❌ Error:', err.message);
   process.exit(1);
 });
