@@ -140,13 +140,17 @@ function serve(targetDir) {
 
   // Redirect các truy cập markdown file trực tiếp về docsify hash router
   // Docsify mặc định gọi trực tiếp file md
-  app.get('/*.md', (req, res) => {
-    const filePath = path.join(targetDir, req.path);
-    if (fs.existsSync(filePath)) {
-      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-      res.send(fs.readFileSync(filePath, 'utf8'));
+  app.use((req, res, next) => {
+    if (req.path.endsWith('.md')) {
+      const filePath = path.join(targetDir, req.path);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+        res.send(fs.readFileSync(filePath, 'utf8'));
+      } else {
+        res.status(404).send('File not found');
+      }
     } else {
-      res.status(404).send('File not found');
+      next();
     }
   });
 
