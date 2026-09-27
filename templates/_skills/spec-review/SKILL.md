@@ -1,0 +1,87 @@
+---
+name: spec-review
+description: Self-review implemented code against the spec and create review.md with appropriate review types based on feature type. Trigger when the user says "review feature", "check", "self-review".
+---
+
+# Skill: Review (spec-review)
+
+## When to trigger
+
+When the user wants the AI to self-review an implemented feature.
+
+Trigger phrases:
+- "Review feature [name]"
+- "Check [feature] before I look at it"
+- "Self-review [feature]"
+- "Is the review done?"
+
+## Process
+
+### Step 1 — Read context
+
+Read in this order:
+1. `specs/features/<name>/spec.md` → know the Acceptance Criteria and Feature Type
+2. `specs/features/<name>/tasks.md` → know what was implemented
+3. `docs/core-principles-and-coding-standards/coding-conventions.md` → the code standards
+
+### Step 2 — Determine which reviews are needed
+
+Based on **Feature Type** in spec.md:
+
+| Feature Type | Reviews required |
+|---|---|
+| Simple UI / Logic | 5a (Code) + 5e (Summary) |
+| API / business logic | 5a + 5b (Test) + 5e |
+| Sensitive (auth, payment, data) | 5a + 5b + 5c (Security) + 5e |
+| Large refactor | 5a + 5d (Performance) + 5e |
+
+### Step 3 — Perform review and create review.md
+
+```
+specs/features/<name>/review.md
+```
+
+#### 5a. Code Review (all features)
+
+Check each created/modified file:
+- Placed in the correct directory per `docs/structure.md`?
+- Naming conventions followed?
+- Dead code, unused imports, hardcoded values (magic numbers, hardcoded URLs)?
+- Is the logic readable? Does it need explanatory comments?
+- Duplicate logic that already exists elsewhere?
+
+#### 5b. Test Review (API / logic features)
+
+- Happy path tested?
+- Edge cases tested? (null, empty, boundary values)
+- Error cases tested? (404, 400, 500)
+- Are tests testing behavior rather than implementation? (avoid testing internals)
+
+#### 5c. Security Review (sensitive features)
+
+- Client input validated/sanitized before processing?
+- Response returning unnecessary sensitive data? (password hash, internal ID, stack trace)
+- Logs recording sensitive data? (token, password, PII)
+- Auth correct? Authorization correct? (correct role, correct ownership)
+- SQL injection possible?
+- If file upload: file type, size, filename validated?
+
+#### 5d. Performance Review (large refactors)
+
+- N+1 queries? (loop with DB calls)
+- Queries missing indexes?
+- Potential memory leaks? (event listeners not cleaned up, large data in memory)
+- Estimated response time meets spec requirements?
+
+#### 5e. Summary (all features)
+
+- Check off each Acceptance Criteria from spec.md, note Pass/Fail with reason
+- If Fail → describe the issue and how to fix it
+- Lessons Learned: note any insight or decision worth remembering
+
+### Step 4 — Conclusion
+
+After writing review.md:
+- If all AC pass and no critical issues → report "✅ Ready to archive"
+- If issues exist → list them clearly, fix before archiving
+- Suggest: "Run `Move-Item specs/features/<name> specs/features/done/<name>` to archive"

@@ -1,0 +1,29 @@
+# docs/README.md — Required Reading Order
+
+> **Documentation entry point.** AI must read this file first, then follow the order below.
+
+---
+
+## Required Reading Order
+
+When receiving any task, AI must read in this order:
+
+| Order | File | When needed |
+|---|---|---|
+| 1 | `docs/project-overview.md` | Always |
+| 2 | `docs/technology.md` | Always |
+| 3 | `docs/core-principles-and-coding-standards/structure.md` | When creating / modifying files |
+| 4 | `docs/core-principles-and-coding-standards/coding-conventions.md` | When writing logic |
+| 5 | `docs/core-principles-and-coding-standards/coding-style.md` | When formatting / linting |
+| 6 | `docs/core-principles-and-coding-standards/instructions-and-work-flows/` | For specific tasks |
+
+---
+
+## SDD Workflow
+
+Every new feature goes through this cycle:
+```
+specs/features/<name>/spec.md → plan.md → tasks.md → implement → review.md → done/
+```
+
+See details at `specs/_workflow.md`.

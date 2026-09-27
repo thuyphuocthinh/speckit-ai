@@ -1,0 +1,65 @@
+# Coding Conventions — Node.js / Express
+
+## Error Handling
+
+Always use `next(err)` to pass errors to the global error handler:
+
+```javascript
+// ✅ Correct — in async controller
+async function getUser(req, res, next) {
+  try {
+    const user = await userService.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    next(err); // pass to global error handler
+  }
+}
+
+// ❌ Wrong — handling errors inside each controller individually
+async function getUser(req, res) {
+  const user = await userService.findById(req.params.id);
+  // if this throws, Express won't catch it
+}
+```
+
+---
+
+## Async Route Handler
+
+Wrap async handlers so Express can catch unhandled rejections:
+
+```javascript
+// Helper wrapper (place in utils/asyncHandler.js)
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+// Use in router
+router.get('/users/:id', asyncHandler(userController.getOne));
+```
+
+---
+
+## Response Format
+
+Standardize response format throughout the codebase:
+
+```javascript
+// Success
+res.status(200).json({ data: result });
+
+// Error (in global error handler)
+res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+```
+
+---
+
+## Naming Convention
+
+| Type | Convention | Example |
+|---|---|---|
+| File | camelCase | `userService.js`, `authController.js` |
+| Function / Variable | camelCase | `findById`, `userId` |
+| Constant | UPPER_SNAKE_CASE | `MAX_RETRY`, `JWT_EXPIRY` |
+| Route | kebab-case | `/api/user-profiles` |
+| Env var | UPPER_SNAKE_CASE | `DATABASE_URL`, `JWT_SECRET` |

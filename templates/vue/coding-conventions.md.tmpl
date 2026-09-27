@@ -1,0 +1,150 @@
+# Coding Conventions — Vue 3
+
+## Script Setup (Required)
+
+```vue
+<!-- ✅ Correct — always use <script setup> -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useUserStore } from '@/stores/useUserStore';
+
+const props = defineProps<{ userId: number }>();
+const emit = defineEmits<{ update: [value: string] }>();
+
+const store = useUserStore();
+const userName = computed(() => store.getUserById(props.userId)?.name);
+</script>
+
+<!-- ❌ Wrong — do not use Options API -->
+<script>
+export default { data() { return {} } }
+</script>
+```
+
+---
+
+## Composables Pattern
+
+```typescript
+// composables/useAuth.ts
+export function useAuth() {
+  const user = ref<User | null>(null);
+  const isLoggedIn = computed(() => !!user.value);
+
+  async function login(credentials: Credentials) { ... }
+  async function logout() { ... }
+
+  return { user, isLoggedIn, login, logout };
+}
+```
+
+- Naming: `use<Domain>` — `useAuth`, `useCart`, `usePagination`
+- Return reactive refs — do not return raw values
+
+---
+
+## API Integration in Composable
+
+Standard pattern for async data fetching:
+
+```typescript
+// composables/useUsers.ts
+export function useUsers() {
+  const users = ref<User[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+
+  async function fetchUsers() {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      users.value = await userService.getAll();
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Unknown error';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return { users, isLoading, error, fetchUsers };
+}
+```
+
+Templates always handle 3 states: `isLoading`, `error`, `data`.
+
+---
+
+## Vue Router Pattern
+
+```typescript
+// router/index.ts — Navigation Guard
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore();
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    next({ name: 'login', query: { redirect: to.fullPath } });
+  } else {
+    next();
+  }
+});
+```
+
+- Use route meta to mark requirements: `meta: { requiresAuth: true, roles: ['admin'] }`
+- Never write guard logic directly inside a component
+
+---
+
+## Form Validation Pattern
+
+```vue
+<script setup lang="ts">
+const form = reactive({ email: '', password: '' });
+const errors = reactive({ email: '', password: '' });
+
+function validate(): boolean {
+  errors.email = !form.email.includes('@') ? 'Invalid email' : '';
+  errors.password = form.password.length < 8 ? 'Minimum 8 characters' : '';
+  return !errors.email && !errors.password;
+}
+
+async function handleSubmit() {
+  if (!validate()) return;
+  // submit logic
+}
+</script>
+```
+
+- Validate before submit — do not submit if there are errors
+- Show errors below each field — never use `alert()`
+
+---
+
+## Pinia Store (Setup Store)
+
+```typescript
+// stores/useUserStore.ts
+export const useUserStore = defineStore('user', () => {
+  const users = ref<User[]>([]);
+  const isLoading = ref(false);
+
+  function getUserById(id: number) {
+    return users.value.find(u => u.id === id);
+  }
+
+  return { users, isLoading, getUserById };
+});
+```
+
+- Use **Setup Store** (function syntax), not Options Store
+- Store name = domain: `defineStore('user', ...)`, `defineStore('cart', ...)`
+
+---
+
+## Naming Convention
+
+| Type | Convention | Example |
+|---|---|---|
+| Component | PascalCase | `UserCard.vue`, `AppButton.vue` |
+| Composable | `use` + PascalCase | `useAuth.ts`, `usePagination.ts` |
+| Store | `use` + Domain + `Store` | `useUserStore.ts` |
+| Route name | camelCase | `userProfile`, `productDetail` |
+| Emits | camelCase | `update:modelValue`, `itemSelected` |

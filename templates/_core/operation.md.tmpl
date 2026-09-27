@@ -1,0 +1,57 @@
+# Operation Rules — No-Bypass Policy
+
+> These rules are **absolute**. No exceptions, no "just this once".
+
+---
+
+## 1. no-bypass-lint
+
+**Never do:**
+```js
+// eslint-disable-next-line
+// eslint-disable
+```
+
+**Instead:** Fix the actual issue. If a rule is incorrect → discuss and update the ESLint config properly.
+
+---
+
+## 2. no-bypass-type-check
+
+**Never do:**
+```ts
+// @ts-ignore
+// @ts-nocheck
+const x = value as any;
+```
+
+**Instead:** Declare the correct type. If a third-party library type is wrong → use declaration merging or create a `.d.ts` file.
+
+---
+
+## 3. no-bypass-commit-hook
+
+**Never do:**
+```bash
+git commit --no-verify
+```
+
+**Instead:** Fix the issue the pre-commit hook detected. Hooks exist for a reason.
+
+---
+
+## 4. no-auto-deploy
+
+**Never do:**
+- Run deploy, npm publish, or push to a production branch on your own
+
+**Instead:** Report to the user and wait for explicit confirmation.
+
+---
+
+## 5. no-install-unknown-package
+
+**Never do:**
+- Run `npm install <package>` without asking
+
+**Instead:** Propose the package, explain the reason, wait for user confirmation.

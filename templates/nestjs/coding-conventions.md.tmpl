@@ -1,0 +1,87 @@
+# Coding Conventions — NestJS
+
+## Dependency Injection (DI)
+
+Always inject via constructor — never instantiate services with `new`:
+
+```typescript
+// ✅ Correct
+@Injectable()
+export class OrderService {
+  constructor(
+    private readonly userService: UserService,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+  ) {}
+}
+
+// ❌ Wrong
+const userService = new UserService(); // bypasses NestJS DI
+```
+
+---
+
+## DTO Validation (class-validator)
+
+All incoming data must go through a DTO with validation decorators:
+
+```typescript
+export class CreateUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+```
+
+- Never validate manually in the controller — use `ValidationPipe` globally
+- Every field that is optional must be decorated with `@IsOptional()`
+
+---
+
+## Exception Handling
+
+Use NestJS built-in exceptions — never throw plain `Error`:
+
+```typescript
+// ✅ Correct
+throw new NotFoundException(`User #${id} not found`);
+throw new BadRequestException('Email already in use');
+throw new UnauthorizedException();
+
+// ❌ Wrong
+throw new Error('User not found'); // no HTTP status code
+```
+
+---
+
+## Response Pattern
+
+Do not return raw entities — always map to a response DTO or plain object:
+
+```typescript
+// ✅ Correct
+return { id: user.id, email: user.email, createdAt: user.createdAt };
+
+// ❌ Wrong
+return user; // may expose passwordHash, internalFields, etc.
+```
+
+---
+
+## Naming Convention
+
+| Type | Convention | Example |
+|---|---|---|
+| Module | PascalCase + `Module` | `UserModule`, `AuthModule` |
+| Controller | PascalCase + `Controller` | `UserController` |
+| Service | PascalCase + `Service` | `UserService` |
+| DTO | PascalCase + `Dto` | `CreateUserDto`, `UpdateUserDto` |
+| Entity | PascalCase | `User`, `Order` |
+| File | kebab-case | `user.service.ts`, `create-user.dto.ts` |

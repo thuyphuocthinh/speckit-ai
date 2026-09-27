@@ -1,0 +1,30 @@
+# Directory Structure — Node.js / Express
+
+## Standard structure
+
+```
+src/
+├── app.js (or app.ts)          ← Init Express app, register middleware and routes
+├── server.js                   ← Bootstrap server, listen on port — no business logic
+└── modules/
+    └── <domain>/               ← One directory per domain (users, auth, products)
+        ├── <domain>.router.js  ← Route declarations, calls controller
+        ├── <domain>.controller.js ← Receives req/res, calls service, returns response
+        ├── <domain>.service.js ← Business logic
+        └── <domain>.test.js    ← Unit tests for service
+
+middleware/
+├── auth.js                     ← Authentication middleware
+├── errorHandler.js             ← Global error handler
+└── validate.js                 ← Input validation middleware
+
+config/
+└── index.js                    ← Centralized config from env vars
+```
+
+## Principles
+
+- **Router** only declares routes and middleware chains
+- **Controller** receives req → calls service → returns res. No business logic.
+- **Service** contains all business logic. No dependency on req/res.
+- **Global error handler** placed last in `app.js` — catches all errors

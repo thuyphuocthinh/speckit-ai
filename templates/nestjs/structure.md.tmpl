@@ -1,0 +1,34 @@
+# Directory Structure — NestJS
+
+## Standard structure
+
+```
+src/
+├── main.ts                     ← Bootstrap: NestFactory.create()
+├── app.module.ts               ← Root module
+└── modules/
+    └── <domain>/               ← One directory per domain (users, auth, products)
+        ├── <domain>.module.ts  ← Module: imports, providers, exports
+        ├── <domain>.controller.ts ← Routes, request/response handling only
+        ├── <domain>.service.ts ← Business logic
+        ├── dto/
+        │   ├── create-<domain>.dto.ts
+        │   └── update-<domain>.dto.ts
+        ├── entities/
+        │   └── <domain>.entity.ts
+        └── <domain>.spec.ts    ← Unit tests
+
+common/
+├── filters/                    ← Global exception filters
+├── guards/                     ← Auth guards
+├── interceptors/               ← Logging, transform response
+├── decorators/                 ← Custom decorators
+└── pipes/                      ← Custom validation pipes
+```
+
+## Principles
+
+- **Controller** handles HTTP only — calls service, returns response. No business logic.
+- **Service** contains all business logic. No dependency on `Request`/`Response`.
+- **DTO** validates all incoming data using `class-validator`
+- **Module** encapsulates its domain — expose only what other modules need via `exports`

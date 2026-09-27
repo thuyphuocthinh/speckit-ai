@@ -1,0 +1,25 @@
+# Directory Structure — React / Vite
+
+```
+src/
+├── main.tsx                    ← Bootstrap app
+├── App.tsx                     ← Root component, router config
+├── pages/                      ← Page-level components (1-to-1 with routes)
+│   └── HomePage.tsx
+├── components/
+│   ├── atoms/                  ← Smallest units (Button, Input, Badge)
+│   ├── molecules/              ← Composed from atoms (FormField, SearchBar)
+│   └── organisms/              ← Complex components (Header, DataTable)
+├── hooks/                      ← Custom hooks (useAuth, useFetch)
+├── store/                      ← Global state (Zustand / Redux Toolkit)
+├── types/
+│   └── index.ts
+└── utils/
+    └── index.ts
+```
+
+## Principles
+
+- **Custom hooks** for reusable logic — naming: `use<Domain>`
+- **`pages/`** are shells only — call hooks and compose organisms
+- Component files use PascalCase: `UserCard.tsx`

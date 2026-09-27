@@ -1,0 +1,67 @@
+# Coding Conventions — Next.js
+
+## Server vs Client Components
+
+```tsx
+// ✅ Server Component (default) — no directive needed
+export default async function UserPage({ params }) {
+  const user = await fetchUser(params.id); // fetch directly, no useEffect needed
+  return <UserProfile user={user} />;
+}
+
+// ✅ Client Component — only when interactivity is needed
+'use client';
+export function LikeButton({ postId }) {
+  const [liked, setLiked] = useState(false);
+  return <button onClick={() => setLiked(true)}>...</button>;
+}
+```
+
+---
+
+## Server Actions (Data Mutation)
+
+Co-locate actions in the same route segment:
+
+```typescript
+// app/settings/actions.ts
+'use server';
+
+export async function updateProfile(formData: FormData) {
+  // validate, update DB
+  revalidatePath('/settings');
+  return { success: true };
+}
+```
+
+- Return `{ error?: string; message?: string }` — do not throw exceptions out
+- Use `redirect()` on success if page navigation is needed
+
+---
+
+## Form Pattern
+
+```tsx
+// Label ABOVE field, never use placeholder as a label
+<label htmlFor="email">Email</label>
+<input
+  id="email"
+  type="email"
+  placeholder="name@example.com"    // Helper text, not label
+  autoComplete="email"               // REQUIRED for email/password fields
+/>
+// Error rendered below the field
+{error && <p className="text-red-500 text-sm">{error}</p>}
+```
+
+---
+
+## Naming Convention
+
+| Type | Convention | Example |
+|---|---|---|
+| Component file | PascalCase | `UserProfile.tsx`, `LoginForm.tsx` |
+| Route segment folder | kebab-case | `user-settings/`, `blog-posts/` |
+| Server Action | camelCase | `updateProfile`, `deletePost` |
+| Utility function | camelCase | `formatDate`, `cn` |
+| Type / Interface | PascalCase | `UserProfile`, `ApiResponse` |

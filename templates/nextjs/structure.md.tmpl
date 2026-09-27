@@ -1,0 +1,38 @@
+# Directory Structure — Next.js (App Router)
+
+## Standard structure
+
+```
+app/
+├── layout.tsx                  ← Root layout
+├── page.tsx                    ← Home page (/)
+├── globals.css
+└── (routes)/
+    └── <segment>/
+        ├── page.tsx            ← UI for this route (Server Component)
+        ├── layout.tsx          ← Nested layout (if needed)
+        ├── loading.tsx         ← Suspense fallback
+        ├── error.tsx           ← Error boundary
+        └── actions.ts          ← Server Actions for this route
+
+components/
+├── atoms/                      ← Smallest units, no internal state (Button, Input, Badge)
+├── molecules/                  ← Composed from atoms (FormField, SearchBar)
+└── organisms/                  ← Complex, may have state (Header, DataTable, Form)
+
+lib/
+├── utils.ts                    ← Pure utility functions
+├── constants.ts                ← App-wide constants
+└── <domain>/
+    └── <domain>.ts             ← Domain-specific logic
+
+types/
+└── index.ts                    ← Shared TypeScript types / interfaces
+```
+
+## Principles
+
+- **Server Components are the default** — only add `'use client'` when needed: event handlers, browser APIs, useState/useEffect
+- **Server Actions** live in `actions.ts` co-located with the route segment
+- **Components** follow Atomic Design — atoms must not import molecules/organisms
+- **`lib/`** contains pure logic only — no JSX

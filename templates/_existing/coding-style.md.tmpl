@@ -1,0 +1,56 @@
+# Coding Style
+
+> **AI-PROMPT:** Check for `.eslintrc.*`, `.eslintrc.js`, `prettier.config.*`, `.prettierrc`, `.husky/`, `package.json` scripts, and `lint-staged` config. Fill in the actual commands and rules used in this project.
+
+---
+
+## Linting & Formatting
+
+<!-- AI-PROMPT: Find the actual lint/format scripts in package.json and fill in -->
+
+```bash
+# Run lint
+{{PACKAGE_MANAGER}} run <!-- AI-PROMPT: find lint script name -->
+
+# Run format
+{{PACKAGE_MANAGER}} run <!-- AI-PROMPT: find format script name, if any -->
+
+# Run both before committing
+{{PACKAGE_MANAGER}} run lint && {{PACKAGE_MANAGER}} run format
+```
+
+## ESLint Rules (Key ones)
+
+<!-- AI-PROMPT: Open .eslintrc.* and list the most important or project-specific rules. Skip standard recommended rules. -->
+
+| Rule | Setting | Why |
+|---|---|---|
+| <!-- fill in --> | <!-- fill in --> | <!-- fill in --> |
+
+## Prettier Config
+
+<!-- AI-PROMPT: Find .prettierrc or prettier.config.js and document the actual settings -->
+
+```json
+// AI-PROMPT: Replace with actual prettier config
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2
+}
+```
+
+## Git Hooks
+
+<!-- AI-PROMPT: Check .husky/ or lint-staged config in package.json. Document what runs on pre-commit and commit-msg. -->
+
+- **pre-commit:** <!-- AI-PROMPT: fill in what runs -->
+- **commit-msg:** <!-- AI-PROMPT: fill in validation if any -->
+
+## Commit Message Format
+
+<!-- AI-PROMPT: Check for commitlint config or CONTRIBUTING.md for commit message conventions. If none found, use conventional commits as default. -->
+
+```
+<!-- AI-PROMPT: Document actual commit message format used in this project -->
+```

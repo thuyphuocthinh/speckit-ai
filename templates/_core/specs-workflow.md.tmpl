@@ -1,0 +1,107 @@
+# SDD Workflow
+
+## Cycle Overview
+
+```
+Idea
+  → specs/features/<name>/spec.md          Step 1: Requirements + Acceptance Criteria
+  → specs/features/<name>/plan.md          Step 2: Technical approach
+  → specs/features/<name>/tasks.md         Step 3: Detailed implementation checklist
+  → Implement                              Step 4: Code according to tasks.md
+  → specs/features/<name>/review.md        Step 5: AI self-review
+  → specs/features/done/<name>/            Done: Archive
+```
+
+---
+
+## Feature Classification — Which steps are required?
+
+| Type | Example | Steps |
+|---|---|---|
+| **Small bugfix** (< 30 min) | Fix typo, null check | Commit message only |
+| **Simple UI / Logic feature** | Add component, basic CRUD | Steps 1 → 5 |
+| **Feature with API / business logic** | New endpoint, complex service | Steps 1 → 5 + Test Review |
+| **Sensitive feature** | Auth, payment, upload, data export | Steps 1 → 5 + Test Review + Security Review |
+| **Large refactor** | Architecture change, migration | Steps 1 → 5 + Performance Review |
+
+---
+
+## Step Details
+
+### Step 1 — `spec.md`
+Requirements, user stories, acceptance criteria, out of scope, open questions.
+> Do not implement if open questions are unresolved.
+
+### Step 2 — `plan.md`
+Technical approach, files to create/modify, dependencies, risks.
+
+### Step 3 — `tasks.md`
+Step-by-step implementation checklist + verify checklist (lint, test, smoke test).
+
+### Step 4 — Implement
+Code according to `tasks.md`. Check off each task. Do not add scope beyond what's in tasks.
+
+### Step 5 — `review.md` (AI self-review)
+
+AI checks everything before reporting done. Sections depend on feature type:
+
+#### 5a. Code Review (all features)
+- Conventions correct? (vs `docs/coding-conventions.md`)
+- Dead code, unused imports, hardcoded values?
+- Is the logic readable and maintainable?
+
+#### 5b. Test Review (API / logic features)
+- Happy paths covered?
+- Edge cases tested? Error cases tested?
+- Sufficient coverage for critical paths?
+
+#### 5c. Security Review (sensitive features)
+- Input validated/sanitized before processing?
+- Sensitive data exposed in response, logs, or error messages?
+- Authentication/Authorization correct?
+- SQL injection / XSS / CSRF if applicable?
+
+#### 5d. Performance Review (large refactors)
+- N+1 queries?
+- Potential memory leaks?
+- Response time meets spec requirements?
+
+#### 5e. Summary (all features)
+- All Acceptance Criteria from `spec.md` checked off?
+- Lessons Learned — note anything worth remembering
+
+---
+
+## Rules
+
+- Do not implement if `spec.md` has unresolved open questions
+- Do not report done without a `review.md`
+- After done → move the entire folder to `specs/features/done/`
+- Small bugfixes don't need a spec — a clear commit message is sufficient
+
+---
+
+## How to use with AI
+
+```
+"Create spec for feature: [describe the requirement]"
+"Create plan from the spec of [feature name]"
+"Create task list for [feature name]"
+"Implement according to tasks.md of [feature name]"
+"Review [feature name] — include code review, test review, security review"
+```
+
+## Directory Structure
+
+```
+specs/
+├── _template.md              ← Copy this when creating a new spec
+├── _workflow.md              ← This file
+└── features/
+    ├── done/                 ← Archive of completed features
+    └── <feature-name>/
+        ├── spec.md
+        ├── plan.md
+        ├── tasks.md
+        └── review.md
+```

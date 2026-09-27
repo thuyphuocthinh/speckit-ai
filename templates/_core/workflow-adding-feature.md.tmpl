@@ -1,0 +1,25 @@
+# Workflow: Adding a New Feature
+
+> Apply this checklist for every new feature. Check each step — do not skip.
+
+## Checklist
+
+### Before coding
+
+- [ ] Create spec at `specs/features/<name>/spec.md` (use template from `specs/_template.md`)
+- [ ] Resolve all Open Questions in spec before implementing
+- [ ] Create `plan.md` and `tasks.md` from the spec
+
+### While coding
+
+- [ ] Place files in the correct directory according to `docs/core-principles-and-coding-standards/structure.md`
+- [ ] Follow patterns in `docs/core-principles-and-coding-standards/coding-conventions.md`
+- [ ] Write unit tests for important logic
+
+### Before reporting done
+
+- [ ] `{{PACKAGE_MANAGER}} run lint` — must pass, no warnings
+- [ ] `{{PACKAGE_MANAGER}} run test` — 100% pass
+- [ ] All Acceptance Criteria in `spec.md` checked off
+- [ ] Create `review.md` summarizing what was done and lessons learned
+- [ ] Move spec folder to `specs/features/done/`

@@ -1,0 +1,62 @@
+{
+  "name": "specfirst",
+  "version": "0.1.0",
+  "description": "Scaffold spec-driven AI workspace docs into any project — supports new & existing codebases.",
+  "license": "MIT",
+  "author": "Thuy Phuoc Thinh <thuyphuocthinh@npm>",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "specfirst": "./bin/index.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "templates/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/index.js",
+    "test": "jest --forceExit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --forceExit"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "clearMocks": true
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "docs",
+    "scaffold",
+    "cli",
+    "sdd",
+    "spec-driven",
+    "specfirst",
+    "claude",
+    "cursor",
+    "gemini",
+    "copilot",
+    "nestjs",
+    "nextjs",
+    "vue",
+    "react"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thuyphuocthinh/specfirst.git"
+  },
+  "homepage": "https://github.com/thuyphuocthinh/specfirst#readme",
+  "bugs": {
+    "url": "https://github.com/thuyphuocthinh/specfirst/issues"
+  }
+}

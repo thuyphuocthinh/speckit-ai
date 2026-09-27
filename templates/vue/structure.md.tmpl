@@ -1,0 +1,30 @@
+# Directory Structure — Vue 3
+
+```
+src/
+├── main.ts                     ← Bootstrap app
+├── App.vue                     ← Root component
+├── router/
+│   └── index.ts                ← Vue Router config
+├── stores/                     ← Pinia stores (one file per domain)
+│   └── useUserStore.ts
+├── composables/                ← Reusable composition functions
+│   └── useAuth.ts
+├── components/
+│   ├── atoms/                  ← Smallest units, no internal state (AppButton, AppInput)
+│   ├── molecules/              ← Composed from atoms (FormField, SearchBar)
+│   └── organisms/              ← Complex components (AppHeader, DataTable)
+├── views/                      ← Page-level components (1-to-1 with routes)
+│   └── HomeView.vue
+├── types/
+│   └── index.ts                ← Shared TypeScript types
+└── utils/
+    └── index.ts                ← Pure utility functions
+```
+
+## Principles
+
+- **`views/`** are shells only — orchestrate composables and organisms, no complex logic
+- **`composables/`** for reusable logic — naming: `use<Domain>.ts`
+- **`stores/`** only for global state — keep local state inside the component
+- **Component files** use PascalCase: `AppButton.vue`, `UserCard.vue`

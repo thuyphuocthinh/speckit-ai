@@ -1,0 +1,43 @@
+# AGENTS.md
+
+> **⚠️ This is a {{FRAMEWORK}} project.** Read this file carefully before writing any code.
+> AI training data may not reflect the exact versions used here — always prioritize files in `node_modules/<pkg>/` and this project's `docs/` over assumptions.
+
+---
+
+## 📚 Required Reading Order
+
+Read in this order before starting any task:
+
+1. `docs/README.md` — Required reading order
+2. `docs/project-overview.md` — Goals, scope
+3. `docs/technology.md` — Stack, libraries, versions
+4. `docs/core-principles-and-coding-standards/structure.md` — Directory structure
+5. `docs/core-principles-and-coding-standards/coding-conventions.md` — Patterns, conventions
+6. `docs/core-principles-and-coding-standards/coding-style.md` — Lint, format
+
+---
+
+## 🚫 Operation Rules — Never Bypass
+
+- `no-bypass-lint` — Never disable ESLint rules or add `// eslint-disable`
+- `no-bypass-type-check` — Never use `@ts-ignore` or cast as `any`
+- `no-bypass-commit-hook` — Never run `git commit --no-verify`
+- `no-auto-deploy` — Never run deploy/publish/release commands on your own
+
+---
+
+## ℹ️ Important Notes
+
+- Package manager: **{{PACKAGE_MANAGER}}**
+- Framework: **{{FRAMEWORK}}**
+- Before starting a new feature → create a spec at `specs/features/<name>/` first
+- Read `specs/_workflow.md` to understand the SDD cycle
+
+---
+
+## 🔗 Cross-tool
+
+- **Claude Code** → reads `CLAUDE.md` (points to this file)
+- **Cursor** → reads `.cursorrules` (points to this file)
+- **Gemini / Copilot** → reads this file directly

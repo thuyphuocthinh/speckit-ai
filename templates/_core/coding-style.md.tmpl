@@ -1,0 +1,46 @@
+# Coding Style
+
+## Linting & Formatting
+
+```bash
+# Run lint
+{{PACKAGE_MANAGER}} run lint
+
+# Run format
+{{PACKAGE_MANAGER}} run format
+
+# Run both before committing
+{{PACKAGE_MANAGER}} run lint && {{PACKAGE_MANAGER}} run format
+```
+
+## Hard Rules (never bypass)
+
+- Never disable an ESLint rule (`// eslint-disable`)
+- Never use `@ts-ignore` or `@ts-nocheck`
+- Never commit if lint fails
+
+## Git Hooks (if configured)
+
+- **pre-commit**: runs lint + type-check
+- **commit-msg**: validates commit message format
+
+## Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+type: feat | fix | docs | refactor | test | chore
+scope: module or feature name
+description: concise, imperative mood
+
+Examples:
+feat(auth): add JWT refresh token
+fix(user): null check before accessing email
+docs(readme): update setup instructions
+```
+
+## IDE Settings
+
+- Indent: **2 spaces**
+- Quotes: **single quotes** (JS/TS) or follow project Prettier config
+- Semicolons: follow project Prettier config

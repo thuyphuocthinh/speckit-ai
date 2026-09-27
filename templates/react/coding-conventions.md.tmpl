@@ -1,0 +1,142 @@
+# Coding Conventions — React
+
+## Component Pattern
+
+```tsx
+// ✅ Correct — Function component with TypeScript props
+interface UserCardProps {
+  userId: number;
+  onSelect: (id: number) => void;
+}
+
+export function UserCard({ userId, onSelect }: UserCardProps) {
+  return <div onClick={() => onSelect(userId)}>...</div>;
+}
+```
+
+- Use named exports, not default exports, for components
+- Props interface placed directly above the component — do not split into a separate file
+
+---
+
+## Custom Hooks — API Integration
+
+Standard pattern for data fetching:
+
+```typescript
+// hooks/useUsers.ts
+export function useUsers() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchUsers() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await userService.getAll();
+        if (!cancelled) setUsers(data);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Unknown error');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    fetchUsers();
+    return () => { cancelled = true; }; // cleanup to prevent setState after unmount
+  }, []);
+
+  return { users, isLoading, error };
+}
+```
+
+- Always include a cleanup function in `useEffect` when fetching async
+- Naming: `use<Domain>` — `useUsers`, `useAuth`, `useCart`
+
+---
+
+## Error Boundary
+
+Wrap page-level components with Error Boundary:
+
+```tsx
+// components/ErrorBoundary.tsx
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+// Usage in App.tsx
+<ErrorBoundary fallback={<ErrorPage />}>
+  <UserDashboard />
+</ErrorBoundary>
+```
+
+---
+
+## Form Pattern
+
+```tsx
+// Controlled form — simple, no library needed
+function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({ email: '', password: '' });
+
+  function validate(): boolean {
+    const newErrors = { email: '', password: '' };
+    if (!email.includes('@')) newErrors.email = 'Invalid email';
+    if (password.length < 8) newErrors.password = 'Minimum 8 characters';
+    setErrors(newErrors);
+    return !newErrors.email && !newErrors.password;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+    // submit logic
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+      {errors.email && <p className="error">{errors.email}</p>}
+    </form>
+  );
+}
+```
+
+---
+
+## Event Handler Naming
+
+```tsx
+// ✅ Correct — handle<Event>
+const handleSubmit = (e: React.FormEvent) => { ... };
+const handleClick = () => { ... };
+const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { ... };
+
+// ❌ Wrong
+const submitForm = () => { ... };
+const clickButton = () => { ... };
+```
+
+---
+
+## Naming Convention
+
+| Type | Convention | Example |
+|---|---|---|
+| Component file | PascalCase | `UserCard.tsx`, `LoginForm.tsx` |
+| Custom hook | `use` + PascalCase | `useAuth.ts`, `useUsers.ts` |
+| Event handler | `handle` + Event | `handleSubmit`, `handleClick` |
+| Props interface | Component + `Props` | `UserCardProps`, `LoginFormProps` |
+| Context | Domain + `Context` | `AuthContext`, `CartContext` |
