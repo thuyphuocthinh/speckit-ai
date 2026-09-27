@@ -1,0 +1,6 @@
+# Coding Conventions
+
+1. **Type Hints**: Always use Python type hints; FastAPI relies on them for validation.
+2. **Async**: Use `async def` for I/O bound routes. Avoid blocking code in async routes.
+3. **Dependency Injection**: Extensively use `Depends()` for authentication, DB sessions, and logic sharing.
+4. **Pydantic**: Use Pydantic V2 features for strict data validation.

@@ -3,7 +3,7 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { detect, detectFramework, detectPackageManager, readPackageJson } = require('../src/detector');
+const { detect, detectFramework, detectPackageManager, readPackageJson, detectPython, detectGo, detectMonorepo } = require('../src/detector');
 
 // Helper: tạo thư mục tạm để test
 function createTempDir() {
@@ -115,6 +115,74 @@ describe('detect()', () => {
 
   test('detect generic khi không có package.json', () => {
     const result = detect(tmpDir);
+    expect(result.type).toBe('single');
     expect(result.framework).toBe('generic');
+  });
+
+  // --- Python Tests ---
+  test('detects Python Django qua requirements.txt', () => {
+    fs.writeFileSync(path.join(tmpDir, 'requirements.txt'), 'Django==4.2.1\npsycopg2-binary==2.9.9');
+    const result = detect(tmpDir);
+    expect(result.type).toBe('single');
+    expect(result.framework).toBe('python-django');
+    expect(result.packageManager).toBe('pip');
+  });
+
+  test('detects Python FastAPI qua pyproject.toml', () => {
+    fs.writeFileSync(path.join(tmpDir, 'pyproject.toml'), '[tool.poetry.dependencies]\nfastapi = "^0.103.1"\nuvicorn = "^0.23.2"');
+    const result = detect(tmpDir);
+    expect(result.type).toBe('single');
+    expect(result.framework).toBe('python-fastapi');
+    expect(result.packageManager).toBe('pip');
+  });
+
+  // --- Go Tests ---
+  test('detects Go Gin qua go.mod', () => {
+    fs.writeFileSync(path.join(tmpDir, 'go.mod'), 'module myapp\n\ngo 1.20\n\nrequire github.com/gin-gonic/gin v1.9.1');
+    const result = detect(tmpDir);
+    expect(result.type).toBe('single');
+    expect(result.framework).toBe('go-gin');
+    expect(result.packageManager).toBe('go-modules');
+  });
+
+  test('detects Go Fiber qua go.mod', () => {
+    fs.writeFileSync(path.join(tmpDir, 'go.mod'), 'module myapp\n\ngo 1.20\n\nrequire github.com/gofiber/fiber/v2 v2.49.1');
+    const result = detect(tmpDir);
+    expect(result.type).toBe('single');
+    expect(result.framework).toBe('go-fiber');
+    expect(result.packageManager).toBe('go-modules');
+  });
+
+  // --- Monorepo Tests ---
+  test('detects turborepo với 1 React app và 1 NestJS api', () => {
+    fs.writeFileSync(path.join(tmpDir, 'turbo.json'), '{}');
+    
+    // apps/web (React)
+    const appsDir = path.join(tmpDir, 'apps');
+    fs.mkdirSync(appsDir);
+    const webDir = path.join(appsDir, 'web');
+    fs.mkdirSync(webDir);
+    fs.writeFileSync(path.join(webDir, 'package.json'), JSON.stringify({ dependencies: { react: '^18' } }));
+
+    // apps/api (NestJS)
+    const apiDir = path.join(appsDir, 'api');
+    fs.mkdirSync(apiDir);
+    fs.writeFileSync(path.join(apiDir, 'package.json'), JSON.stringify({ dependencies: { '@nestjs/core': '^10' } }));
+
+    const result = detect(tmpDir);
+    expect(result.type).toBe('monorepo');
+    expect(result.tool).toBe('turborepo');
+    expect(result.subProjects).toHaveLength(2);
+    
+    // Sort to ensure stable assertions
+    const projects = result.subProjects.sort((a, b) => a.name.localeCompare(b.name));
+    
+    expect(projects[0].name).toBe('api');
+    expect(projects[0].framework).toBe('nestjs');
+    expect(projects[0].path).toBe('apps/api');
+
+    expect(projects[1].name).toBe('web');
+    expect(projects[1].framework).toBe('react');
+    expect(projects[1].path).toBe('apps/web');
   });
 });

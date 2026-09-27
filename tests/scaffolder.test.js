@@ -149,22 +149,22 @@ describe('scaffold()', () => {
   afterEach(() => { cleanupDir(tmpDir); });
 
   test('tạo .agents/AGENTS.md cho nestjs project', () => {
-    scaffold({ targetDir: tmpDir, framework: 'nestjs', packageManager: 'npm' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'AGENTS.md'))).toBe(true);
   });
 
   test('tạo CLAUDE.md', () => {
-    scaffold({ targetDir: tmpDir, framework: 'nextjs', packageManager: 'yarn' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nextjs', packageManager: 'yarn' } });
     expect(fs.existsSync(path.join(tmpDir, 'CLAUDE.md'))).toBe(true);
   });
 
   test('tạo specs/_workflow.md', () => {
-    scaffold({ targetDir: tmpDir, framework: 'vue', packageManager: 'pnpm' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'vue', packageManager: 'pnpm' } });
     expect(fs.existsSync(path.join(tmpDir, 'specs', '_workflow.md'))).toBe(true);
   });
 
   test('AGENTS.md chứa tên framework đã render', () => {
-    scaffold({ targetDir: tmpDir, framework: 'nestjs', packageManager: 'npm' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
     const content = fs.readFileSync(path.join(tmpDir, '.agents', 'AGENTS.md'), 'utf8');
     expect(content).toContain('NestJS');
     expect(content).not.toContain('{{FRAMEWORK}}'); // không còn placeholder thô
@@ -172,16 +172,16 @@ describe('scaffold()', () => {
 
   test('skip file đã tồn tại, trả về skipped count đúng', () => {
     // Chạy lần đầu
-    scaffold({ targetDir: tmpDir, framework: 'react', packageManager: 'npm' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'react', packageManager: 'npm' } });
     // Chạy lần hai
-    const { created, skipped } = scaffold({ targetDir: tmpDir, framework: 'react', packageManager: 'npm' });
+    const { created, skipped } = scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'react', packageManager: 'npm' } });
     expect(skipped).toBeGreaterThan(0);
     expect(created).toBe(0);
   });
 
   // --- mode=existing integration ---
   test('mode=existing: docs/coding-conventions.md chứa AI-PROMPT', () => {
-    scaffold({ targetDir: tmpDir, framework: 'nestjs', packageManager: 'npm', mode: 'existing' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' }, mode: 'existing' });
     const content = fs.readFileSync(
       path.join(tmpDir, 'docs', 'core-principles-and-coding-standards', 'coding-conventions.md'), 'utf8'
     );
@@ -189,7 +189,7 @@ describe('scaffold()', () => {
   });
 
   test('mode=new: docs/coding-conventions.md không chứa AI-PROMPT', () => {
-    scaffold({ targetDir: tmpDir, framework: 'nestjs', packageManager: 'npm', mode: 'new' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' }, mode: 'new' });
     const content = fs.readFileSync(
       path.join(tmpDir, 'docs', 'core-principles-and-coding-standards', 'coding-conventions.md'), 'utf8'
     );
@@ -197,7 +197,25 @@ describe('scaffold()', () => {
   });
 
   test('mode=existing: .agents/AGENTS.md vẫn được tạo', () => {
-    scaffold({ targetDir: tmpDir, framework: 'vue', packageManager: 'yarn', mode: 'existing' });
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'vue', packageManager: 'yarn' }, mode: 'existing' });
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'AGENTS.md'))).toBe(true);
+  });
+
+  // --- Monorepo integration ---
+  test('monorepo: tạo docs cho nhiều subProjects', () => {
+    const projectConfig = {
+      type: 'monorepo',
+      subProjects: [
+        { name: 'api', framework: 'nestjs', packageManager: 'pnpm' },
+        { name: 'web', framework: 'nextjs', packageManager: 'pnpm' }
+      ]
+    };
+    scaffold({ targetDir: tmpDir, projectConfig });
+    
+    // Root files
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'AGENTS.md'))).toBe(true);
+    // Sub files
+    expect(fs.existsSync(path.join(tmpDir, 'docs', 'api', 'technology.md'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'docs', 'web', 'technology.md'))).toBe(true);
   });
 });

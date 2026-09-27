@@ -54,14 +54,18 @@ async function main() {
   console.log(`[speckit-ai] ⚙️  Mode: ${mode === 'existing' ? 'existing (AI-PROMPT skeletons)' : 'new (Best Practices templates)'}`);
   console.log('');
 
-  // Step 1: Detect framework
-  const { framework, packageManager } = detector.detect(targetDir);
-  console.log(`[speckit-ai] 🔍 Detected: ${framework} / ${packageManager}`);
+  // Step 1: Detect framework / structure
+  const projectConfig = detector.detect(targetDir);
+  if (projectConfig.type === 'single') {
+    console.log(`[speckit-ai] 🔍 Detected: ${projectConfig.framework} / ${projectConfig.packageManager}`);
+  } else {
+    console.log(`[speckit-ai] 🔍 Detected Monorepo (${projectConfig.tool}) with ${projectConfig.subProjects.length} sub-projects`);
+  }
   console.log('');
 
   // Step 2: Scaffold
   console.log('[speckit-ai] 📝 Creating documentation structure...');
-  const { created, skipped } = scaffolder.scaffold({ targetDir, framework, packageManager, mode });
+  const { created, skipped } = scaffolder.scaffold({ targetDir, projectConfig, mode });
   console.log('');
   console.log(`[speckit-ai] ✅ ${created} file(s) created, ${skipped} file(s) skipped (already exist)`);
   console.log('');

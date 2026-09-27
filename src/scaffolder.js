@@ -50,80 +50,84 @@ function readTemplate(templateRelPath) {
  * @param {'new'|'existing'} mode - 'new' dùng fw-specific Best Practices, 'existing' dùng AI-PROMPT skeletons
  * Mỗi entry: { tmpl: relative path trong templates/, dest: relative path trong targetDir }
  */
-function buildFileMap(framework, mode = 'new') {
+function buildFileMap(framework, mode = 'new', scope = 'all') {
   const fw = framework;
   // Với mode=existing, các docs template swap sang _existing/ skeleton
   const docsTmpl = (name) => mode === 'existing' ? `_existing/${name}` : null;
 
-  return [
+  const allFiles = [
     // Cross-tool wrappers (root) — same in both modes
-    { tmpl: '_core/CLAUDE.md.tmpl',         dest: 'CLAUDE.md' },
-    { tmpl: '_core/cursorrules.tmpl',        dest: '.cursorrules' },
+    { tmpl: '_core/CLAUDE.md.tmpl',         dest: 'CLAUDE.md', isDoc: false },
+    { tmpl: '_core/cursorrules.tmpl',        dest: '.cursorrules', isDoc: false },
 
     // .agents/ — same in both modes
-    { tmpl: '_core/AGENTS.md.tmpl',          dest: '.agents/AGENTS.md' },
+    { tmpl: '_core/AGENTS.md.tmpl',          dest: '.agents/AGENTS.md', isDoc: false },
 
     // docs/ — same in both modes
-    { tmpl: '_core/docs-README.md.tmpl',         dest: 'docs/README.md' },
-    { tmpl: '_core/ai-agent-guidelines.md.tmpl', dest: 'docs/ai-agent-guidelines.md' },
-    { tmpl: '_core/operation.md.tmpl',           dest: 'docs/operation.md' },
+    { tmpl: '_core/docs-README.md.tmpl',         dest: 'docs/README.md', isDoc: true },
+    { tmpl: '_core/ai-agent-guidelines.md.tmpl', dest: 'docs/ai-agent-guidelines.md', isDoc: true },
+    { tmpl: '_core/operation.md.tmpl',           dest: 'docs/operation.md', isDoc: true },
 
     // docs/ — swapped in existing mode
     { tmpl: docsTmpl('project-overview.md.tmpl') ||
             (fs.existsSync(path.join(TEMPLATES_DIR, `${fw}/project-overview.md.tmpl`))
              ? `${fw}/project-overview.md.tmpl`
              : '_core/project-overview.md.tmpl'),
-      dest: 'docs/project-overview.md' },
+      dest: 'docs/project-overview.md', isDoc: true },
 
     // docs/core-principles.../ — swapped in existing mode
-    { tmpl: docsTmpl('technology.md.tmpl')            || `${fw}/technology.md.tmpl`,      dest: 'docs/technology.md' },
-    { tmpl: docsTmpl('structure.md.tmpl')             || `${fw}/structure.md.tmpl`,       dest: 'docs/core-principles-and-coding-standards/structure.md' },
-    { tmpl: docsTmpl('coding-conventions.md.tmpl')    || `${fw}/coding-conventions.md.tmpl`, dest: 'docs/core-principles-and-coding-standards/coding-conventions.md' },
-    { tmpl: docsTmpl('coding-style.md.tmpl')          || '_core/coding-style.md.tmpl',   dest: 'docs/core-principles-and-coding-standards/coding-style.md' },
+    { tmpl: docsTmpl('technology.md.tmpl')            || `${fw}/technology.md.tmpl`,      dest: 'docs/technology.md', isDoc: true },
+    { tmpl: docsTmpl('structure.md.tmpl')             || `${fw}/structure.md.tmpl`,       dest: 'docs/core-principles-and-coding-standards/structure.md', isDoc: true },
+    { tmpl: docsTmpl('coding-conventions.md.tmpl')    || `${fw}/coding-conventions.md.tmpl`, dest: 'docs/core-principles-and-coding-standards/coding-conventions.md', isDoc: true },
+    { tmpl: docsTmpl('coding-style.md.tmpl')          || '_core/coding-style.md.tmpl',   dest: 'docs/core-principles-and-coding-standards/coding-style.md', isDoc: true },
 
     // docs/instructions-and-work-flows/ — same in both modes
-    { tmpl: '_core/workflow-adding-feature.md.tmpl', dest: 'docs/core-principles-and-coding-standards/instructions-and-work-flows/adding-a-new-feature.md' },
+    { tmpl: '_core/workflow-adding-feature.md.tmpl', dest: 'docs/core-principles-and-coding-standards/instructions-and-work-flows/adding-a-new-feature.md', isDoc: true },
 
     // specs/ — same in both modes
-    { tmpl: '_core/specs-template.md.tmpl',  dest: 'specs/_template.md' },
-    { tmpl: '_core/specs-workflow.md.tmpl',  dest: 'specs/_workflow.md' },
+    { tmpl: '_core/specs-template.md.tmpl',  dest: 'specs/_template.md', isDoc: false },
+    { tmpl: '_core/specs-workflow.md.tmpl',  dest: 'specs/_workflow.md', isDoc: false },
 
     // .agents/skills/ — same in both modes
-    { tmpl: '_skills/spec-create/SKILL.md',  dest: '.agents/skills/spec-create/SKILL.md' },
-    { tmpl: '_skills/spec-plan/SKILL.md',    dest: '.agents/skills/spec-plan/SKILL.md' },
-    { tmpl: '_skills/spec-review/SKILL.md',  dest: '.agents/skills/spec-review/SKILL.md' },
+    { tmpl: '_skills/spec-create/SKILL.md',  dest: '.agents/skills/spec-create/SKILL.md', isDoc: false },
+    { tmpl: '_skills/spec-plan/SKILL.md',    dest: '.agents/skills/spec-plan/SKILL.md', isDoc: false },
+    { tmpl: '_skills/spec-review/SKILL.md',  dest: '.agents/skills/spec-review/SKILL.md', isDoc: false },
   ];
+
+  if (scope === 'rootOnly') return allFiles.filter(f => !f.isDoc);
+  if (scope === 'docsOnly') return allFiles.filter(f => f.isDoc);
+  return allFiles;
 }
 
-/**
- * Tạo toàn bộ cấu trúc thư mục và file cho dự án.
- * @param {object} options
- * @param {string} options.targetDir      - Thư mục đích
- * @param {string} options.framework      - Framework ID
- * @param {string} options.packageManager - 'npm' | 'yarn' | 'pnpm'
- * @param {'new'|'existing'} [options.mode='new'] - 'new': Best Practices templates, 'existing': AI-PROMPT skeletons
- * @returns {{ created: number, skipped: number }}
- */
-function scaffold({ targetDir, framework, packageManager, mode = 'new' }) {
+function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectName = null, scope = 'all' }) {
   const vars = {
     FRAMEWORK: formatFrameworkName(framework),
     PACKAGE_MANAGER: packageManager,
     YEAR: String(new Date().getFullYear()),
   };
 
-  // Tạo các thư mục rỗng cần thiết trước
+  // Tạo thư mục cơ bản
   ensureDir(path.join(targetDir, '.agents', 'skills'));
   ensureDir(path.join(targetDir, 'specs', 'features', 'done'));
-  ensureDir(path.join(targetDir, 'docs', 'core-principles-and-coding-standards', 'instructions-and-work-flows'));
+  
+  const docsPrefix = subProjectName ? `docs/${subProjectName}` : 'docs';
+  ensureDir(path.join(targetDir, docsPrefix, 'core-principles-and-coding-standards', 'instructions-and-work-flows'));
 
-  const fileMap = buildFileMap(framework, mode);
+  const fileMap = buildFileMap(framework, mode, scope);
   let created = 0;
   let skipped = 0;
 
-  for (const { tmpl, dest } of fileMap) {
+  for (const file of fileMap) {
+    const tmpl = file.tmpl;
+    let dest = file.dest;
+    
+    // Nếu là subProject, đổi đường dẫn docs/ thành docs/<subProjectName>/
+    if (subProjectName && dest.startsWith('docs/')) {
+      dest = dest.replace('docs/', `${docsPrefix}/`);
+    }
+
     const rawContent = readTemplate(tmpl);
     if (!rawContent) {
-      // Fallback sang generic nếu template framework-specific không tồn tại
       const fallbackTmpl = tmpl.replace(/^[^/]+\//, 'generic/');
       const fallbackContent = readTemplate(fallbackTmpl);
       if (!fallbackContent) continue;
@@ -143,6 +147,36 @@ function scaffold({ targetDir, framework, packageManager, mode = 'new' }) {
 }
 
 /**
+ * Entry function: gọi scaffoldFiles dựa trên projectConfig (single hoặc monorepo).
+ */
+function scaffold({ targetDir, projectConfig, mode = 'new' }) {
+  let totalCreated = 0;
+  let totalSkipped = 0;
+
+  if (projectConfig.type === 'single') {
+    const { framework, packageManager } = projectConfig;
+    const res = scaffoldFiles({ targetDir, framework, packageManager, mode });
+    totalCreated += res.created;
+    totalSkipped += res.skipped;
+  } else if (projectConfig.type === 'monorepo') {
+    // 1. Root files
+    const resRoot = scaffoldFiles({ targetDir, framework: 'generic', packageManager: 'npm', mode, scope: 'rootOnly' });
+    totalCreated += resRoot.created;
+    totalSkipped += resRoot.skipped;
+
+    // 2. Docs cho từng subProject
+    for (const sub of projectConfig.subProjects) {
+      console.log(`\n[speckit-ai] 📦 Scaffolding sub-project: ${sub.name} (${formatFrameworkName(sub.framework)})`);
+      const resSub = scaffoldFiles({ targetDir, framework: sub.framework, packageManager: sub.packageManager, mode, subProjectName: sub.name, scope: 'docsOnly' });
+      totalCreated += resSub.created;
+      totalSkipped += resSub.skipped;
+    }
+  }
+
+  return { created: totalCreated, skipped: totalSkipped };
+}
+
+/**
  * Format framework ID thành tên hiển thị.
  */
 function formatFrameworkName(fw) {
@@ -151,7 +185,12 @@ function formatFrameworkName(fw) {
     nextjs: 'Next.js',
     vue: 'Vue 3',
     react: 'React',
-    'node-express': 'Node.js / Express',
+    'python-django': 'Python / Django',
+    'python-fastapi': 'Python / FastAPI',
+    'python-generic': 'Python (Generic)',
+    'go-gin': 'Go / Gin',
+    'go-fiber': 'Go / Fiber',
+    'go-generic': 'Go (Generic)',
     generic: 'Generic',
   };
   return names[fw] ?? fw;

@@ -1,0 +1,6 @@
+# Coding Conventions
+
+1. **Formatting**: Always use `gofmt`.
+2. **Fiber Context**: Use `c *fiber.Ctx` efficiently. Be careful with zero-allocation features if passing context outside the handler.
+3. **Errors**: Return errors up the stack, handle them gracefully at the top level.
+4. **Services**: Isolate business logic from Fiber handlers to make it testable.

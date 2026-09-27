@@ -1,0 +1,6 @@
+# Coding Conventions
+
+1. **Effective Go**: Follow standard Go idioms (`gofmt`, `goimports`).
+2. **Error Handling**: Always check errors explicitly (`if err != nil`). Don't use panics for normal error handling.
+3. **Gin Handlers**: Keep handlers thin. Parse request in handler, pass to service layer, and return JSON.
+4. **Concurrency**: Use goroutines and channels carefully; guard shared state with mutexes.
