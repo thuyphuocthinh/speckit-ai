@@ -21,9 +21,9 @@ done
 
 if [ $HAS_SOURCE_CHANGE -eq 1 ] && [ $HAS_DOC_CHANGE -eq 0 ]; then
   echo ""
-  echo "🚨 [speckit-ai] ERROR: Ban da thay doi source code nhung CHUA cap nhat tai lieu!"
-  echo "👉 Vui long cap nhat Spec/Docs (thu muc specs/ hoac docs/)."
-  echo "👉 Hoac bo qua kiem tra nay bang lenh: git commit --no-verify"
+  echo "🚨 [speckit-ai] ERROR: You modified source code but DID NOT update the specs/docs!"
+  echo "👉 Please update the documentation in 'specs/' or 'docs/' folder before committing."
+  echo "👉 Or bypass this check by using: git commit --no-verify"
   echo ""
   exit 1
 fi
@@ -40,7 +40,7 @@ function installHook(targetDir) {
   const gitHooksDir = path.join(targetDir, '.git', 'hooks');
   
   if (!fs.existsSync(gitHooksDir)) {
-    console.error(`[speckit-ai] ❌ Error: Khong tim thay thu muc .git/hooks tai ${targetDir}. Ban da chay git init chua?`);
+    console.error(`[speckit-ai] ❌ Error: Could not find .git/hooks directory at ${targetDir}. Did you run 'git init'?`);
     return false;
   }
 
@@ -55,10 +55,10 @@ function installHook(targetDir) {
       // Bỏ qua lỗi chmod trên Windows vì không cần thiết
     }
     
-    console.log(`[speckit-ai] ✅ Cai dat Native Git Hook thanh cong tai: .git/hooks/pre-commit`);
+    console.log(`[speckit-ai] ✅ Native Git Hook successfully installed at: .git/hooks/pre-commit`);
     return true;
   } catch (err) {
-    console.error(`[speckit-ai] ❌ Error: Khong the ghi file hook. ${err.message}`);
+    console.error(`[speckit-ai] ❌ Error: Could not write hook file. ${err.message}`);
     return false;
   }
 }

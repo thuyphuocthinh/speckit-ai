@@ -110,7 +110,7 @@ async function callAI(prompt, model, apiKey) {
 async function generateDocs(targetDir) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('API Key is missing. Vui long set GEMINI_API_KEY, OPENAI_API_KEY, hoac ANTHROPIC_API_KEY');
+    throw new Error('API Key is missing. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
   }
 
   let model = 'gemini';
