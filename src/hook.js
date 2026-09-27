@@ -28,6 +28,14 @@ if [ $HAS_SOURCE_CHANGE -eq 1 ] && [ $HAS_DOC_CHANGE -eq 0 ]; then
   exit 1
 fi
 
+echo "🔍 [speckit-ai] Linting specs..."
+if ! npx speckit-ai lint; then
+  echo ""
+  echo "🚨 [speckit-ai] ERROR: Spec linting failed. Please add the missing sections to your specs."
+  echo ""
+  exit 1
+fi
+
 exit 0
 `;
 

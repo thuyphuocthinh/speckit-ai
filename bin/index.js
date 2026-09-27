@@ -12,6 +12,7 @@ const configLoader = require('../src/config');
 const hookManager = require('../src/hook');
 const llm = require('../src/llm');
 const generator = require('../src/generator');
+const linter = require('../src/linter');
 
 const VALID_MODES = ['new', 'existing', 'auto'];
 
@@ -30,6 +31,7 @@ speckit-ai — Scaffold spec-driven AI workspace docs
 Usage:
   npx speckit-ai [--mode=<mode>] [--init-hook]
   npx speckit-ai generate <type> "<title>"
+  npx speckit-ai lint
 
 Options:
   --mode=new       (default) Generate Best Practices templates for your framework
@@ -38,7 +40,8 @@ Options:
   --init-hook      Install a native Git pre-commit hook to enforce SDD
   --help           Show this help message
 
-Generators:
+Commands:
+  lint                             Lint spec files against templates to ensure completeness
   g, generate feature "<Title>"    Generate a new feature spec
   g, generate adr "<Title>"        Generate a new Architecture Decision Record
   g, generate contract "<Title>"   Generate a new API/Data Contract
@@ -78,8 +81,19 @@ async function main() {
     return;
   }
 
-  const parsedArgs = parseArgs(rawArgs);
   const targetDir = process.cwd();
+
+  // Handle lint command
+  if (rawArgs[0] === 'lint') {
+    console.log('[speckit-ai] 🔍 Linting specs...');
+    const passed = linter.lint(targetDir);
+    if (!passed) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  const parsedArgs = parseArgs(rawArgs);
 
   console.log('');
   
