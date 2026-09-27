@@ -9,6 +9,7 @@ const stealth = require('../src/stealth');
 const configLoader = require('../src/config');
 const hookManager = require('../src/hook');
 const llm = require('../src/llm');
+const generator = require('../src/generator');
 
 const VALID_MODES = ['new', 'existing', 'auto'];
 
@@ -25,7 +26,8 @@ function parseArgs(argv) {
 speckit-ai — Scaffold spec-driven AI workspace docs
 
 Usage:
-  npx speckit-ai [--mode=<mode>]
+  npx speckit-ai [--mode=<mode>] [--init-hook]
+  npx speckit-ai generate <type> "<title>"
 
 Options:
   --mode=new       (default) Generate Best Practices templates for your framework
@@ -33,6 +35,11 @@ Options:
   --mode=auto      Auto-generate project docs based on your source code using LLM
   --init-hook      Install a native Git pre-commit hook to enforce SDD
   --help           Show this help message
+
+Generators:
+  g, generate feature "<Title>"    Generate a new feature spec
+  g, generate adr "<Title>"        Generate a new Architecture Decision Record
+  g, generate contract "<Title>"   Generate a new API/Data Contract
 `);
     process.exit(0);
   }
@@ -54,7 +61,22 @@ Options:
 }
 
 async function main() {
-  const parsedArgs = parseArgs(process.argv.slice(2));
+  const rawArgs = process.argv.slice(2);
+  
+  // Handle generate commands
+  if (rawArgs[0] === 'generate' || rawArgs[0] === 'g') {
+    const type = rawArgs[1];
+    const title = rawArgs.slice(2).join(' ');
+    try {
+      generator.generate(type, title);
+    } catch (err) {
+      console.error(`[speckit-ai] ❌ Error: ${err.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  const parsedArgs = parseArgs(rawArgs);
   const targetDir = process.cwd();
 
   console.log('');
