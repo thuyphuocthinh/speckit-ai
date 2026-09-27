@@ -19,6 +19,9 @@ npx speckit-ai --mode=auto
 
 # Enforce Spec-Driven Development with Native Git Hook
 npx speckit-ai --init-hook
+
+# Generate new specs (Feature, ADR, Contract)
+npx speckit-ai generate feature "Payment Gateway"
 ```
 
 That's it. No config. No install. One command.
@@ -184,6 +187,7 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 
 ```
 Usage: npx speckit-ai [--mode=<mode>] [--init-hook]
+       npx speckit-ai generate <type> "<title>"
 
 Options:
   --mode=new       (default) Best Practices templates for your framework
@@ -191,6 +195,11 @@ Options:
   --mode=auto      Auto-generate project docs based on your source code using LLM
   --init-hook      Install a native Git pre-commit hook to enforce SDD
   --help           Show this help message
+
+Generators (v0.3.0+):
+  generate feature "<Title>"    Generate a new feature spec
+  generate adr "<Title>"        Generate a new Architecture Decision Record
+  generate contract "<Title>"   Generate a new API/Data Contract
 ```
 
 ## Custom Templates (v0.2.0+)
