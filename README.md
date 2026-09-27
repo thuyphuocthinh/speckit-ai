@@ -14,8 +14,11 @@
 # New project — Best Practices docs for your framework
 npx speckit-ai
 
-# Existing project — AI-PROMPT skeletons for AI to fill in
-npx speckit-ai --mode=existing
+# Existing project — Let AI write the docs based on your source code!
+npx speckit-ai --mode=auto
+
+# Enforce Spec-Driven Development with Native Git Hook
+npx speckit-ai --init-hook
 ```
 
 That's it. No config. No install. One command.
@@ -26,7 +29,10 @@ That's it. No config. No install. One command.
 
 - 📄 **Generates 4-layer AI documentation** — project overview, tech stack, structure, conventions — tailored to your framework
 - 🗂️ **Sets up SDD workflow** — `specs/` directory with `_template.md` and `_workflow.md` for spec-driven development
-- 🧠 **Installs AI Skills** — `spec-create`, `spec-plan`, `spec-review` skills for AI agents to execute the full SDD cycle
+- 🤖 **AI Auto-generation** — Can scan your codebase and write the docs for you using Gemini/OpenAI/Claude
+- 🛡️ **Native Git Hook** — Blocks commits if you change code without updating specs (`--init-hook`)
+- 🏗️ **Monorepo & Multi-language** — Supports Python, Go, and JS/TS Monorepos out of the box
+- 🧠 **Installs AI Skills** — `spec-create`, `spec-plan`, `spec-review` skills for AI agents
 - 🙈 **Stealth mode** — adds all generated files to `.git/info/exclude` so they never pollute your `.gitignore`
 
 ---
@@ -69,6 +75,24 @@ Generates skeleton docs with `<!-- AI-PROMPT: ... -->` markers. Then ask your AI
 
 Your AI analyzes the real code and produces docs that match **this specific project** — not generic best practices.
 
+### AI Auto-generation mode (v0.2.0+)
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+npx speckit-ai --mode=auto
+```
+
+Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
+
+### Enforce SDD with Git Hooks (v0.2.0+)
+
+```bash
+npx speckit-ai --init-hook
+```
+
+This installs a native Git `pre-commit` hook. If a developer modifies source code but forgets to update the `specs/` or `docs/` folder, the commit will be blocked! 
+*(You can bypass it for minor fixes using `git commit --no-verify`)*
+
 ---
 
 ## Supported Frameworks
@@ -80,7 +104,13 @@ Your AI analyzes the real code and produces docs that match **this specific proj
 | **Vue 3** | `vue` in dependencies |
 | **React** | `react` in dependencies (no Next.js) |
 | **Node / Express** | `express` in dependencies |
+| **Python (Django)** | `django` in requirements.txt / pyproject.toml |
+| **Python (FastAPI)**| `fastapi` in requirements.txt / pyproject.toml |
+| **Go (Gin/Fiber)**  | `gin-gonic/gin` or `gofiber/fiber` in go.mod |
 | **Generic** | Fallback — works with any project |
+
+### Monorepo Support
+`speckit-ai` automatically detects Monorepos (Turborepo, Nx, Lerna, pnpm workspaces). It will generate root-level AI instructions and automatically scaffold separate `docs/` folders for each sub-project!
 
 ---
 
@@ -153,13 +183,25 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 ## Options
 
 ```
-Usage: npx speckit-ai [--mode=<mode>]
+Usage: npx speckit-ai [--mode=<mode>] [--init-hook]
 
 Options:
   --mode=new       (default) Best Practices templates for your framework
   --mode=existing  AI-PROMPT skeleton docs for an existing codebase
+  --mode=auto      Auto-generate project docs based on your source code using LLM
+  --init-hook      Install a native Git pre-commit hook to enforce SDD
   --help           Show this help message
 ```
+
+## Custom Templates (v0.2.0+)
+Want to use your company's proprietary templates instead of the default ones?
+Create a `.speckitrc` (or `speckit.config.json`) in your project root:
+```json
+{
+  "templatesDir": "./my-custom-templates"
+}
+```
+`speckit-ai` will prioritize your custom templates. If a file is missing, it safely falls back to the default generic templates.
 
 ---
 
