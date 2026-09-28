@@ -114,7 +114,7 @@ describe('Generator Unit Tests', () => {
 
   describe('generateChangeProposal()', () => {
     test('tạo change proposal thành công', () => {
-      generateChangeProposal('Add 2FA', tmpDir);
+      generateChangeProposal('Add 2FA', null, tmpDir);
       
       const changeDir = path.join(tmpDir, 'changes', 'add-2fa');
       expect(fs.existsSync(changeDir)).toBe(true);
@@ -124,15 +124,34 @@ describe('Generator Unit Tests', () => {
     });
 
     test('báo lỗi nếu change đã tồn tại', () => {
-      generateChangeProposal('Add 2FA', tmpDir);
-      expect(() => generateChangeProposal('Add 2FA', tmpDir)).toThrow('Change "add-2fa" already exists');
+      generateChangeProposal('Add 2FA', null, tmpDir);
+      expect(() => generateChangeProposal('Add 2FA', null, tmpDir)).toThrow('Change "add-2fa" already exists');
+    });
+
+    test('tạo brownfield change proposal thành công (có target)', () => {
+      const targetSpecDir = path.join(tmpDir, 'specs', 'features', 'login');
+      fs.mkdirSync(targetSpecDir, { recursive: true });
+      const targetFilePath = path.join('specs', 'features', 'login', 'spec.md');
+      fs.writeFileSync(path.join(tmpDir, targetFilePath), '# Spec: User Login\n');
+
+      generateChangeProposal('Add Apple Login', targetFilePath, tmpDir);
+      
+      const changeDir = path.join(tmpDir, 'changes', 'add-apple-login');
+      expect(fs.existsSync(changeDir)).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'proposal.md'))).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'spec-draft.md'))).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'metadata.json'))).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'tasks.md'))).toBe(true);
+
+      const metadata = JSON.parse(fs.readFileSync(path.join(changeDir, 'metadata.json'), 'utf8'));
+      expect(metadata.target).toBe(targetFilePath);
     });
   });
 
   describe('archiveChange()', () => {
-    test('archive change thành công', () => {
+    test('archive greenfield change thành công', () => {
       // Setup
-      generateChangeProposal('Add 2FA', tmpDir);
+      generateChangeProposal('Add 2FA', null, tmpDir);
       
       // Execute
       archiveChange('Add 2FA', tmpDir);
@@ -149,6 +168,33 @@ describe('Generator Unit Tests', () => {
 
     test('báo lỗi nếu change không tồn tại', () => {
       expect(() => archiveChange('Non-existent', tmpDir)).toThrow('Change "non-existent" not found');
+    });
+
+    test('archive brownfield change thành công', () => {
+      // Setup Target
+      const targetSpecDir = path.join(tmpDir, 'specs', 'features', 'login');
+      fs.mkdirSync(targetSpecDir, { recursive: true });
+      const targetFilePath = path.join('specs', 'features', 'login', 'spec.md');
+      fs.writeFileSync(path.join(tmpDir, targetFilePath), '# Spec: User Login\n');
+
+      // Propose Brownfield
+      generateChangeProposal('Add Apple Login', targetFilePath, tmpDir);
+
+      // Simulate Dev updating spec-draft.md
+      const draftPath = path.join(tmpDir, 'changes', 'add-apple-login', 'spec-draft.md');
+      fs.writeFileSync(draftPath, '# Spec: User Login\n\n### AC-4: Apple Login\n');
+
+      // Execute
+      archiveChange('Add Apple Login', tmpDir);
+      
+      // Verify
+      const archiveDir = path.join(tmpDir, 'archive', 'add-apple-login');
+      const changeDir = path.join(tmpDir, 'changes', 'add-apple-login');
+      const finalSpecContent = fs.readFileSync(path.join(tmpDir, targetFilePath), 'utf8');
+      
+      expect(fs.existsSync(archiveDir)).toBe(true);
+      expect(fs.existsSync(changeDir)).toBe(false);
+      expect(finalSpecContent).toContain('### AC-4: Apple Login');
     });
   });
 

@@ -79,7 +79,7 @@ function generate(type, title, targetDir = process.cwd()) {
   return destPath;
 }
 
-function generateChangeProposal(title, targetDir = process.cwd()) {
+function generateChangeProposal(title, targetFilePath = null, targetDir = process.cwd()) {
   if (!title) {
     throw new Error('Title is required. Example: npx speckit-ai propose "Add 2FA"');
   }
@@ -93,16 +93,35 @@ function generateChangeProposal(title, targetDir = process.cwd()) {
 
   fs.mkdirSync(changeDir, { recursive: true });
 
-  const proposalContent = `# Proposal: ${title}\n\n## Context & Problem\n<Why are we making this change?>\n\n## Proposed Solution\n<What is the high-level approach?>\n\n## Impact\n<Which systems/modules are affected?>\n`;
-  const deltaSpecsContent = `# Delta Specs: ${title}\n\n## ADDED\n- <New spec logic>\n\n## MODIFIED\n- <Changed spec logic>\n\n## REMOVED\n- <Removed spec logic>\n`;
-  const tasksContent = `# Tasks: ${title}\n\n- [ ] Update entity models (if any)\n- [ ] Implement code changes\n- [ ] Update/Add tests mapping to AC\n- [ ] Pass characterization tests (if legacy)\n- [ ] Review by PO/BA\n`;
+  if (targetFilePath) {
+    const absTargetPath = path.resolve(targetDir, targetFilePath);
+    if (!fs.existsSync(absTargetPath)) {
+      throw new Error(`Target file not found: ${targetFilePath}`);
+    }
+    
+    fs.copyFileSync(absTargetPath, path.join(changeDir, 'spec-draft.md'));
+    fs.writeFileSync(path.join(changeDir, 'metadata.json'), JSON.stringify({ target: targetFilePath }, null, 2), 'utf8');
+    
+    const proposalContent = `# Proposal: ${title}\n\n## Context & Problem\n<Why are we making this change?>\n\n## Proposed Solution\n<Edit \`spec-draft.md\` to apply changes>\n`;
+    const tasksContent = `# Tasks: ${title}\n\n- [ ] Modify \`spec-draft.md\` to reflect the changes\n- [ ] Update entity models (if any)\n- [ ] Implement code changes\n- [ ] Update/Add tests mapping to AC\n- [ ] Review by PO/BA\n`;
+    
+    fs.writeFileSync(path.join(changeDir, 'proposal.md'), proposalContent, 'utf8');
+    fs.writeFileSync(path.join(changeDir, 'tasks.md'), tasksContent, 'utf8');
+    
+    console.log(`[speckit-ai] 💡 Brownfield change proposal created at: changes/${slug}/`);
+    console.log(`[speckit-ai] 👉 Open changes/${slug}/spec-draft.md to start modifying the target spec.`);
+  } else {
+    const proposalContent = `# Proposal: ${title}\n\n## Context & Problem\n<Why are we making this change?>\n\n## Proposed Solution\n<What is the high-level approach?>\n\n## Impact\n<Which systems/modules are affected?>\n`;
+    const deltaSpecsContent = `# Delta Specs: ${title}\n\n## ADDED\n- <New spec logic>\n\n## MODIFIED\n- <Changed spec logic>\n\n## REMOVED\n- <Removed spec logic>\n`;
+    const tasksContent = `# Tasks: ${title}\n\n- [ ] Update entity models (if any)\n- [ ] Implement code changes\n- [ ] Update/Add tests mapping to AC\n- [ ] Pass characterization tests (if legacy)\n- [ ] Review by PO/BA\n`;
 
-  fs.writeFileSync(path.join(changeDir, 'proposal.md'), proposalContent, 'utf8');
-  fs.writeFileSync(path.join(changeDir, 'delta-specs.md'), deltaSpecsContent, 'utf8');
-  fs.writeFileSync(path.join(changeDir, 'tasks.md'), tasksContent, 'utf8');
+    fs.writeFileSync(path.join(changeDir, 'proposal.md'), proposalContent, 'utf8');
+    fs.writeFileSync(path.join(changeDir, 'delta-specs.md'), deltaSpecsContent, 'utf8');
+    fs.writeFileSync(path.join(changeDir, 'tasks.md'), tasksContent, 'utf8');
 
-  console.log(`[speckit-ai] 💡 Change proposal created at: changes/${slug}/`);
-  console.log(`[speckit-ai] 👉 Open changes/${slug}/proposal.md to explain the "why".`);
+    console.log(`[speckit-ai] 💡 Change proposal created at: changes/${slug}/`);
+    console.log(`[speckit-ai] 👉 Open changes/${slug}/proposal.md to explain the "why".`);
+  }
 }
 
 function archiveChange(title, targetDir = process.cwd()) {
@@ -117,17 +136,31 @@ function archiveChange(title, targetDir = process.cwd()) {
     throw new Error(`Change "${slug}" not found in changes/`);
   }
 
-  const deltaSpecsPath = path.join(changeDir, 'delta-specs.md');
-  const targetSpecDir = path.join(targetDir, 'specs', 'features', slug);
-  const targetSpecPath = path.join(targetSpecDir, 'spec.md');
+  const metadataPath = path.join(changeDir, 'metadata.json');
+  
+  if (fs.existsSync(metadataPath)) {
+    // Brownfield: Overwrite target spec with the draft
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    const absTargetPath = path.resolve(targetDir, metadata.target);
+    const draftPath = path.join(changeDir, 'spec-draft.md');
+    
+    if (!fs.existsSync(draftPath)) {
+      throw new Error(`Draft file not found at ${draftPath}`);
+    }
+    
+    fs.copyFileSync(draftPath, absTargetPath);
+    console.log(`[speckit-ai] ✅ Target spec updated at ${metadata.target}`);
+  } else {
+    // Greenfield: Copy delta specs to baseline specs
+    const deltaSpecsPath = path.join(changeDir, 'delta-specs.md');
+    const targetSpecDir = path.join(targetDir, 'specs', 'features', slug);
+    const targetSpecPath = path.join(targetSpecDir, 'spec.md');
 
-  // Copy delta specs to baseline specs
-  if (fs.existsSync(deltaSpecsPath)) {
-    fs.mkdirSync(targetSpecDir, { recursive: true });
-    // In a real scenario, this might append to an existing spec or create a new one
-    // For MVP, we copy it over
-    fs.copyFileSync(deltaSpecsPath, targetSpecPath);
-    console.log(`[speckit-ai] ✅ Baseline specs updated at specs/features/${slug}/spec.md`);
+    if (fs.existsSync(deltaSpecsPath)) {
+      fs.mkdirSync(targetSpecDir, { recursive: true });
+      fs.copyFileSync(deltaSpecsPath, targetSpecPath);
+      console.log(`[speckit-ai] ✅ Baseline specs created at specs/features/${slug}/spec.md`);
+    }
   }
 
   // Move change folder to archive

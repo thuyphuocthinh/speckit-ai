@@ -115,9 +115,20 @@ async function main() {
 
   // Handle propose command
   if (rawArgs[0] === 'propose') {
-    const title = rawArgs.slice(1).join(' ');
+    const titleArgs = [];
+    let targetFilePath = null;
+    
+    for (let i = 1; i < rawArgs.length; i++) {
+      if (rawArgs[i].startsWith('--target=')) {
+        targetFilePath = rawArgs[i].split('=')[1];
+      } else {
+        titleArgs.push(rawArgs[i]);
+      }
+    }
+    
+    const title = titleArgs.join(' ');
     try {
-      generator.generateChangeProposal(title, targetDir);
+      generator.generateChangeProposal(title, targetFilePath, targetDir);
     } catch (err) {
       console.error(`[speckit-ai] ❌ Error: ${err.message}`);
       process.exit(1);

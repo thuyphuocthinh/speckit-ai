@@ -95,33 +95,13 @@ npx speckit-ai --mode=auto
 
 Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
 
-### Enforce SDD with Git Hooks
+### 📚 Tutorials & Use Cases
 
-```bash
-npx speckit-ai --init-hook
-```
+Want to learn how to use Speckit AI in a real-world Agile team? Check out our comprehensive step-by-step tutorials:
 
-This installs native Git `pre-commit` and `commit-msg` hooks. 
-- **Pre-commit**: Blocks commits if you modify source code but forget to update the `specs/` or `docs/` folder.
-- **Commit-msg (Strict Traceability)**: If you set `"requireCommitPrefix": true` in `.speckit-ai.json`, it blocks commits that don't include a Spec ID (e.g. `feat(UC-042): ...`).
-
-*(You can bypass hooks using `git commit --no-verify`)*
-
-### OpenSpec Workflow (v1.0.0+)
-
-For existing projects, modifying baseline specs directly is risky. Use the OpenSpec workflow:
-
-```bash
-# 1. Propose a change (Creates changes/add-apple-login/ workspace)
-npx speckit-ai propose "Add Apple Login"
-
-# 2. Generate tests from Acceptance Criteria in the draft spec
-npx speckit-ai generate tests "Add Apple Login"
-
-# 3. After implementation and testing are complete, archive it
-npx speckit-ai archive "Add Apple Login"
-```
-The `archive` command automatically updates the baseline `specs/` and moves the draft into `archive/`.
+1. [Greenfield Workflow (Building New Features)](./docs/tutorials/01-GREENFIELD_WORKFLOW.md)
+2. [Brownfield Workflow (Modifying Existing Features)](./docs/tutorials/02-BROWNFIELD_WORKFLOW.md)
+3. [Strict Traceability (Enforcing SDD via Git Hooks)](./docs/tutorials/03-STRICT_TRACEABILITY.md)
 
 ---
 
