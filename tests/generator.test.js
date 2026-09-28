@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { toKebabCase, getNextAdrNumber, generate } = require('../src/generator');
+const { toKebabCase, getNextAdrNumber, generate, generateChangeProposal, archiveChange, generateTestsFromSpec } = require('../src/generator');
 
 function createTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'speckit-generator-test-'));
@@ -109,6 +109,68 @@ describe('Generator Unit Tests', () => {
 
     test('báo lỗi nếu type không hợp lệ', () => {
       expect(() => generate('unknown', 'Test', tmpDir)).toThrow('Unknown type: unknown');
+    });
+  });
+
+  describe('generateChangeProposal()', () => {
+    test('tạo change proposal thành công', () => {
+      generateChangeProposal('Add 2FA', tmpDir);
+      
+      const changeDir = path.join(tmpDir, 'changes', 'add-2fa');
+      expect(fs.existsSync(changeDir)).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'proposal.md'))).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'delta-specs.md'))).toBe(true);
+      expect(fs.existsSync(path.join(changeDir, 'tasks.md'))).toBe(true);
+    });
+
+    test('báo lỗi nếu change đã tồn tại', () => {
+      generateChangeProposal('Add 2FA', tmpDir);
+      expect(() => generateChangeProposal('Add 2FA', tmpDir)).toThrow('Change "add-2fa" already exists');
+    });
+  });
+
+  describe('archiveChange()', () => {
+    test('archive change thành công', () => {
+      // Setup
+      generateChangeProposal('Add 2FA', tmpDir);
+      
+      // Execute
+      archiveChange('Add 2FA', tmpDir);
+      
+      // Verify
+      const archiveDir = path.join(tmpDir, 'archive', 'add-2fa');
+      const baselineSpec = path.join(tmpDir, 'specs', 'features', 'add-2fa', 'spec.md');
+      const changeDir = path.join(tmpDir, 'changes', 'add-2fa');
+      
+      expect(fs.existsSync(archiveDir)).toBe(true);
+      expect(fs.existsSync(baselineSpec)).toBe(true);
+      expect(fs.existsSync(changeDir)).toBe(false);
+    });
+
+    test('báo lỗi nếu change không tồn tại', () => {
+      expect(() => archiveChange('Non-existent', tmpDir)).toThrow('Change "non-existent" not found');
+    });
+  });
+
+  describe('generateTestsFromSpec()', () => {
+    test('tạo test skeleton từ spec chứa AC', () => {
+      // Setup spec
+      const specDir = path.join(tmpDir, 'specs', 'features', 'login');
+      fs.mkdirSync(specDir, { recursive: true });
+      fs.writeFileSync(path.join(specDir, 'spec.md'), `# Spec: User Login\n\n### AC-1: Valid credentials\n\n### AC-2: Invalid password\n`);
+
+      const testFile = generateTestsFromSpec('login', tmpDir);
+      
+      expect(fs.existsSync(testFile)).toBe(true);
+      const content = fs.readFileSync(testFile, 'utf8');
+      expect(content).toContain("describe('Spec: User Login'");
+      expect(content).toContain("describe('AC-1: Valid credentials'");
+      expect(content).toContain("describe('AC-2: Invalid password'");
+      expect(content).toContain("test('should satisfy acceptance criteria'");
+    });
+
+    test('báo lỗi nếu không tìm thấy spec', () => {
+      expect(() => generateTestsFromSpec('non-existent', tmpDir)).toThrow('Could not find any spec file');
     });
   });
 });

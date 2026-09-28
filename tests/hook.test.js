@@ -49,7 +49,7 @@ describe('hook.js - installHook()', () => {
     const hookPath = path.join(gitHooksDir, 'pre-commit');
     expect(fs.existsSync(hookPath)).toBe(true);
     expect(fs.readFileSync(hookPath, 'utf8')).toBe(HOOK_CONTENT);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Native Git Hook successfully installed'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Native Git Hooks successfully installed'));
     
     consoleSpy.mockRestore();
   });

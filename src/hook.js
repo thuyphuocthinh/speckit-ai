@@ -39,6 +39,13 @@ fi
 exit 0
 `;
 
+const COMMIT_MSG_HOOK_CONTENT = `#!/bin/sh
+# speckit-ai commit-msg hook
+
+# Call speckit-ai to verify commit message
+npx speckit-ai verify-commit "$1"
+`;
+
 /**
  * Cài đặt native git hook vào thư mục .git/hooks
  * @param {string} targetDir 
@@ -53,22 +60,25 @@ function installHook(targetDir) {
   }
 
   const hookPath = path.join(gitHooksDir, 'pre-commit');
+  const commitMsgHookPath = path.join(gitHooksDir, 'commit-msg');
   
   try {
     fs.writeFileSync(hookPath, HOOK_CONTENT, 'utf8');
+    fs.writeFileSync(commitMsgHookPath, COMMIT_MSG_HOOK_CONTENT, 'utf8');
     // Set quyền thực thi (chmod +x) cho file trên Unix systems
     try {
       fs.chmodSync(hookPath, '755');
+      fs.chmodSync(commitMsgHookPath, '755');
     } catch (chmodErr) {
       // Bỏ qua lỗi chmod trên Windows vì không cần thiết
     }
     
-    console.log(`[speckit-ai] ✅ Native Git Hook successfully installed at: .git/hooks/pre-commit`);
+    console.log(`[speckit-ai] ✅ Native Git Hooks successfully installed at: .git/hooks/pre-commit and .git/hooks/commit-msg`);
     return true;
   } catch (err) {
-    console.error(`[speckit-ai] ❌ Error: Could not write hook file. ${err.message}`);
+    console.error(`[speckit-ai] ❌ Error: Could not write hook files. ${err.message}`);
     return false;
   }
 }
 
-module.exports = { installHook, HOOK_CONTENT };
+module.exports = { installHook, HOOK_CONTENT, COMMIT_MSG_HOOK_CONTENT };
