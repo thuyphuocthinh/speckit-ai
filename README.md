@@ -22,6 +22,12 @@ npx speckit-ai --init-hook
 
 # Generate new specs (Feature, ADR, Contract)
 npx speckit-ai generate feature "Payment Gateway"
+
+# Propose a change (OpenSpec Workflow)
+npx speckit-ai propose "Add Apple Login"
+
+# Generate test skeleton from Acceptance Criteria
+npx speckit-ai generate tests "Add Apple Login"
 ```
 
 That's it. No config. No install. One command.
@@ -33,7 +39,9 @@ That's it. No config. No install. One command.
 - 📄 **Generates 4-layer AI documentation** — project overview, tech stack, structure, conventions — tailored to your framework
 - 🗂️ **Sets up SDD workflow** — `specs/` directory with `_template.md` and `_workflow.md` for spec-driven development
 - 🤖 **AI Auto-generation** — Can scan your codebase and write the docs for you using Gemini/OpenAI/Claude
-- 🛡️ **Native Git Hook** — Blocks commits if you change code without updating specs (`--init-hook`)
+- 🔄 **OpenSpec Workflow** — Isolate feature drafts in `changes/` before merging to `specs/`
+- 🧪 **Test-Protected** — Auto-generate test skeletons matching Acceptance Criteria
+- 🛡️ **Native Git Hook** — Blocks commits without specs or missing UC-ID tags (Strict Traceability)
 - 🏗️ **Monorepo & Multi-language** — Supports Python, Go, and JS/TS Monorepos out of the box
 - 🧠 **Installs AI Skills** — `spec-create`, `spec-plan`, `spec-review` skills for AI agents
 - 🙈 **Stealth mode** — adds all generated files to `.git/info/exclude` so they never pollute your `.gitignore`
@@ -87,14 +95,33 @@ npx speckit-ai --mode=auto
 
 Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
 
-### Enforce SDD with Git Hooks (v0.2.0+)
+### Enforce SDD with Git Hooks
 
 ```bash
 npx speckit-ai --init-hook
 ```
 
-This installs a native Git `pre-commit` hook. If a developer modifies source code but forgets to update the `specs/` or `docs/` folder, the commit will be blocked! 
-*(You can bypass it for minor fixes using `git commit --no-verify`)*
+This installs native Git `pre-commit` and `commit-msg` hooks. 
+- **Pre-commit**: Blocks commits if you modify source code but forget to update the `specs/` or `docs/` folder.
+- **Commit-msg (Strict Traceability)**: If you set `"requireCommitPrefix": true` in `.speckit-ai.json`, it blocks commits that don't include a Spec ID (e.g. `feat(UC-042): ...`).
+
+*(You can bypass hooks using `git commit --no-verify`)*
+
+### OpenSpec Workflow (v1.0.0+)
+
+For existing projects, modifying baseline specs directly is risky. Use the OpenSpec workflow:
+
+```bash
+# 1. Propose a change (Creates changes/add-apple-login/ workspace)
+npx speckit-ai propose "Add Apple Login"
+
+# 2. Generate tests from Acceptance Criteria in the draft spec
+npx speckit-ai generate tests "Add Apple Login"
+
+# 3. After implementation and testing are complete, archive it
+npx speckit-ai archive "Add Apple Login"
+```
+The `archive` command automatically updates the baseline `specs/` and moves the draft into `archive/`.
 
 ---
 
@@ -188,6 +215,10 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 ```
 Usage: npx speckit-ai [--mode=<mode>] [--init-hook]
        npx speckit-ai generate <type> "<title>"
+       npx speckit-ai propose "<title>"
+       npx speckit-ai archive "<title>"
+       npx speckit-ai lint
+       npx speckit-ai serve
 
 Options:
   --mode=new       (default) Best Practices templates for your framework
@@ -196,10 +227,15 @@ Options:
   --init-hook      Install a native Git pre-commit hook to enforce SDD
   --help           Show this help message
 
-Generators (v0.3.0+):
-  generate feature "<Title>"    Generate a new feature spec
-  generate adr "<Title>"        Generate a new Architecture Decision Record
-  generate contract "<Title>"   Generate a new API/Data Contract
+Commands:
+  lint                             Lint spec files against templates to ensure completeness
+  serve                            Start local documentation web server
+  g, generate feature "<Title>"    Generate a new feature spec
+  g, generate adr "<Title>"        Generate a new Architecture Decision Record
+  g, generate contract "<Title>"   Generate a new API/Data Contract
+  g, generate tests "<Keyword>"    Generate a test skeleton matching spec ACs
+  propose "<Title>"                Create a change proposal (OpenSpec Workflow)
+  archive "<Title>"                Merge change proposal to specs and archive it
 ```
 
 ## Custom Templates (v0.2.0+)
