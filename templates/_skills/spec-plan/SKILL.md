@@ -57,7 +57,15 @@ After writing the plan:
 - Is every Acceptance Criteria in spec.md covered by at least one file change?
 - Are any files placed in the wrong directory per `docs/structure.md`?
 
-### Step 5 — Report
+### Step 5 — Creating Tasks (`tasks.md`)
+
+When the user asks you to "create task list" based on this plan, you MUST structure `tasks.md` strictly into 4 phases. **Do not skip Phase 4.**
+- **Phase 1: Setup** (Scaffolding, DB migrations, etc.)
+- **Phase 2: Logic** (Core business logic, services, domain models)
+- **Phase 3: UI / API** (Controllers, Routes, React components)
+- **Phase 4: Tests** (Unit tests, Integration tests). *MANDATORY: If you skip this phase, the task list is considered invalid.*
+
+### Step 6 — Report
 
 Notify the user:
 - Path to plan.md just created

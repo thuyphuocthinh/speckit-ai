@@ -43,12 +43,15 @@ specs/features/<name>/review.md
 
 #### 5a. Code Review (all features)
 
-Check each created/modified file:
+Act as a strict Senior Architect. Check each created/modified file:
+- **Clean Code & SOLID**: Does the code violate Single Responsibility? Is business logic leaking into Controllers instead of Services/Domain? 
+- **Reference Pattern**: Did the code follow the established patterns in the project (e.g., Dependency Injection, error handling)?
 - Placed in the correct directory per `docs/structure.md`?
 - Naming conventions followed?
 - Dead code, unused imports, hardcoded values (magic numbers, hardcoded URLs)?
 - Is the logic readable? Does it need explanatory comments?
 - Duplicate logic that already exists elsewhere?
+- *If the code violates SOLID or Clean Code principles, you MUST reject it and instruct the Coder to refactor.*
 
 #### 5b. Test Review (API / logic features)
 
