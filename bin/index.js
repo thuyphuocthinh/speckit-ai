@@ -14,6 +14,9 @@ const llm = require('../src/llm');
 const generator = require('../src/generator');
 const linter = require('../src/linter');
 const docServer = require('../src/server');
+const handoff = require('../src/handoff');
+const reviewer = require('../src/reviewer');
+const ui = require('../src/ui');
 
 const VALID_MODES = ['new', 'existing', 'auto'];
 
@@ -36,6 +39,8 @@ Usage:
   npx speckit-ai archive "<title>"
   npx speckit-ai lint
   npx speckit-ai serve
+  npx speckit-ai handoff
+  npx speckit-ai review "<title>" [--ref=<filepath>]
 
 Options:
   --mode=new       (default) Generate Best Practices templates for your framework
@@ -47,6 +52,8 @@ Options:
 Commands:
   lint                             Lint spec files against templates to ensure completeness
   serve                            Start local documentation web server
+  handoff                          Summarize uncommitted code and append to active tasks.md
+  review "<Title>" [--ref=<path>]  Review code against feature specs and AGENTS.md
   g, generate feature "<Title>"    Generate a new feature spec
   g, generate adr "<Title>"        Generate a new Architecture Decision Record
   g, generate contract "<Title>"   Generate a new API/Data Contract
@@ -182,6 +189,50 @@ async function main() {
   // Handle serve command
   if (rawArgs[0] === 'serve') {
     docServer.serve(targetDir);
+    return;
+  }
+
+  // Handle handoff command
+  if (rawArgs[0] === 'handoff') {
+    try {
+      ui.printInfo('Running speckit-ai handoff...');
+      ui.printStep('Analyzing git diff and generating summary via AI...');
+      const savedPath = await handoff.execute(targetDir);
+      ui.printSuccess(`Handoff successful! Summary appended to: ${savedPath}`);
+    } catch (err) {
+      ui.printError(err.message);
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Handle review command
+  if (rawArgs[0] === 'review') {
+    const titleArgs = [];
+    let referenceFile = null;
+    for (let i = 1; i < rawArgs.length; i++) {
+      if (rawArgs[i].startsWith('--ref=')) {
+        referenceFile = rawArgs[i].split('=')[1];
+      } else {
+        titleArgs.push(rawArgs[i]);
+      }
+    }
+    const title = titleArgs.join(' ');
+    try {
+      ui.printInfo(`Running speckit-ai review for "${title}"...`);
+      ui.printStep('Sending Spec and Code Diff to AI for review...');
+      const result = await reviewer.analyze(title, targetDir, referenceFile);
+      if (result.success) {
+        ui.printSuccess('REVIEW PASSED! Code matches specs and SOLID principles.');
+        process.exit(0);
+      } else {
+        ui.printError('REVIEW FAILED! Found the following issues:', result.errors);
+        process.exit(1);
+      }
+    } catch (err) {
+      ui.printError(err.message);
+      process.exit(1);
+    }
     return;
   }
 

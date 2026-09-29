@@ -26,6 +26,12 @@ npx speckit-ai generate feature "Payment Gateway"
 # Propose a change (OpenSpec Workflow)
 npx speckit-ai propose "Add Apple Login"
 
+# Context Handoff for AI
+npx speckit-ai handoff
+
+# AI Code Review (Strict SOLID & AC checks)
+npx speckit-ai review "Add Apple Login" [--ref=<file>]
+
 # Generate test skeleton from Acceptance Criteria
 npx speckit-ai generate tests "Add Apple Login"
 ```
@@ -95,6 +101,22 @@ npx speckit-ai --mode=auto
 
 Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
 
+### 🔄 AI Handoff & Review Commands (v1.2.0+)
+
+**1. Handoff Mode**
+If you or your AI hit a context limit, or you need to pause work for the day:
+```bash
+npx speckit-ai handoff
+```
+This automatically runs `git diff`, queries the LLM to summarize the current progress, and appends the summary directly to your active `tasks.md`. The next AI agent can seamlessly pick up where you left off.
+
+**2. Independent AI Code Review**
+To avoid "Confirmation Bias" where an AI says its own code is perfect, use a dedicated review command that runs outside your IDE chat context:
+```bash
+npx speckit-ai review "Feature Name" --ref="src/modules/core/reference.ts"
+```
+The CLI acts as a strict Senior Architect. It checks if your git diff strictly satisfies the Acceptance Criteria in `spec.md` AND follows the SOLID principles defined in `.agents/AGENTS.md`. It will `exit(1)` and block CI/CD if it finds any violations.
+
 ### 📚 Tutorials & Use Cases
 
 Want to learn how to use Speckit AI in a real-world Agile team? Check out our comprehensive step-by-step tutorials:
@@ -102,6 +124,7 @@ Want to learn how to use Speckit AI in a real-world Agile team? Check out our co
 1. [Greenfield Workflow (Building New Features)](./docs/tutorials/01-GREENFIELD_WORKFLOW.md)
 2. [Brownfield Workflow (Modifying Existing Features)](./docs/tutorials/02-BROWNFIELD_WORKFLOW.md)
 3. [Strict Traceability (Enforcing SDD via Git Hooks)](./docs/tutorials/03-STRICT_TRACEABILITY.md)
+4. [AI Handoff & Review (Solving AI Context Limits & Bias)](./docs/tutorials/04-HANDOFF_AND_REVIEW.md)
 
 ---
 

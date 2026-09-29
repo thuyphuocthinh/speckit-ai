@@ -104,6 +104,19 @@ async function callAI(prompt, model, apiKey) {
   throw new Error(`Unsupported model: ${model}`);
 }
 
+function safeParseJson(raw) {
+  try {
+    const cleanStr = raw.replace(/^```(?:json)?/im, '').replace(/```$/im, '').trim();
+    return JSON.parse(cleanStr);
+  } catch (err) {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      try { return JSON.parse(match[0]); } catch (e) {}
+    }
+    throw new Error('Failed to parse AI response into valid JSON.');
+  }
+}
+
 /**
  * Sinh tài liệu tự động dựa trên project context
  */
@@ -136,15 +149,75 @@ ${JSON.stringify(context, null, 2)}`;
 
   try {
     const rawResult = await callAI(prompt, model, apiKey);
-    
-    // Clean up potential markdown codeblocks in LLM response
-    const cleanJsonStr = rawResult.replace(/^```(?:json)?/im, '').replace(/```$/im, '').trim();
-    
-    const parsed = JSON.parse(cleanJsonStr);
-    return parsed;
+    return safeParseJson(rawResult);
   } catch (err) {
     throw new Error(`AI Generation failed: ${err.message}`);
   }
 }
 
-module.exports = { scanProject, callAI, generateDocs };
+async function getApiKeyAndModel() {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('API Key is missing. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
+  let model = 'gemini';
+  if (process.env.OPENAI_API_KEY) model = 'openai';
+  if (process.env.ANTHROPIC_API_KEY) model = 'claude';
+  if (process.env.GEMINI_API_KEY) model = 'gemini';
+  return { apiKey, model };
+}
+
+async function generateHandoffSummary(diff) {
+  const { apiKey, model } = await getApiKeyAndModel();
+  const prompt = `You are a developer doing a handoff. Summarize the current progress based on the git diff below.
+Focus on: What is done? What is broken or incomplete? What should the next developer (or AI) do?
+Return ONLY a markdown string, DO NOT wrap in JSON format for this request.
+
+Diff:
+${diff.substring(0, 15000)}`;
+
+  try {
+    // If using gemini/openai with JSON mode forced, we might get JSON back.
+    // For simplicity, we just ask for text and handle it.
+    let result = await callAI(prompt, model, apiKey);
+    try {
+        const parsed = JSON.parse(result);
+        if (parsed.text) result = parsed.text;
+    } catch(e) {}
+    return result;
+  } catch (err) {
+    throw new Error(`AI Handoff failed: ${err.message}`);
+  }
+}
+
+async function reviewCode(specContent, agentsContent, diff, refContent) {
+  const { apiKey, model } = await getApiKeyAndModel();
+  const prompt = `You are a strict Senior Architect. Review the following code changes (Diff).
+You MUST check if it fulfills the Spec, follows the AGENTS Rules, and matches the Reference Code (if provided).
+Reject violations of SOLID principles or Business Logic leaking into controllers.
+
+Return the result STRICTLY as a JSON object:
+{
+  "success": boolean,
+  "errors": ["list of strings explaining the issues"]
+}
+
+Spec:
+${specContent}
+
+Rules:
+${agentsContent}
+
+Reference Code:
+${refContent}
+
+Diff:
+${diff.substring(0, 15000)}`;
+
+  try {
+    const rawResult = await callAI(prompt, model, apiKey);
+    return safeParseJson(rawResult);
+  } catch (err) {
+    throw new Error(`AI Review failed: ${err.message}`);
+  }
+}
+
+module.exports = { scanProject, callAI, generateDocs, generateHandoffSummary, reviewCode };
