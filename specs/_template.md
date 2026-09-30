@@ -1,38 +1,47 @@
-# Spec: [Tên Feature]
+# Spec: <Feature Name>
+
+> **Decisions**:
+> **Contracts**:
 
 ## Overview
 
-Mô tả ngắn gọn (2-3 câu): Feature này làm gì, tại sao cần, ai dùng.
+<Brief description (2-3 sentences): what this feature does, why it's needed, who uses it.>
 
 ## Feature Type
 
-<!-- Chọn 1 loại để xác định bước review cần thiết -->
-- [ ] Bugfix nhỏ (< 30 phút) — chỉ commit message
-- [ ] Feature UI / Logic đơn giản — review cơ bản
-- [ ] Feature có API / business logic — + test review
-- [ ] Feature nhạy cảm (auth, payment, data) — + security review
-- [ ] Refactor lớn — + performance review
+<!-- Check one to determine which review steps are required -->
+- [ ] Small bugfix (< 30 min) — commit message only, no spec needed
+- [ ] Simple UI / Logic feature — basic review
+- [ ] Feature with API / business logic — + test review
+- [ ] Sensitive feature (auth, payment, data export) — + security review
+- [ ] Large refactor — + performance review
 
 ## User Stories
 
-- As a [role], I want [action] so that [benefit]
+- As a <role>, I want <action> so that <benefit>
 
 ## Acceptance Criteria
 
-- [ ] Criterion 1 — testable, đo lường được, cụ thể
-- [ ] Criterion 2
-- [ ] Criterion 3
+<!-- One `### AC-n:` block per criterion. Must be testable, measurable, specific.
+     `speckit-ai generate tests` reads these headings. -->
+
+### AC-1: <Short name>
+Given <precondition>
+When <action>
+Then <observable result>
 
 ## Technical Constraints
 
-- Framework / API liên quan
-- Performance requirement (nếu có)
-- Security requirement (nếu có)
+- <Related frameworks / APIs, performance and security requirements, breaking changes?>
 
 ## Out of Scope
 
-- Liệt kê rõ những gì KHÔNG làm trong feature này
+- <Explicitly list what will NOT be done in this feature (prevent scope creep)>
 
 ## Open Questions
 
-- [ ] Question 1 — phải resolve trước khi code
+- [ ] <Question — must be resolved before `speckit-ai done`>
+
+## Changelog
+
+<!-- Lines are appended by `speckit-ai done`. Do not edit by hand. -->
