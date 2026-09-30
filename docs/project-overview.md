@@ -2,12 +2,12 @@
 
 ## Dự án là gì?
 
-`create-ai-docs` là một CLI tool viết bằng Node.js, cho phép developer scaffold ngay cấu trúc AI-first documentation (4-layer docs + Specs-Driven Development) vào bất kỳ dự án nào chỉ bằng một lệnh duy nhất:
+`speckit-ai` là một CLI tool viết bằng Node.js, cho phép developer scaffold ngay cấu trúc AI-first documentation (4-layer docs + Specs-Driven Development) vào bất kỳ dự án nào chỉ bằng một lệnh duy nhất:
 
 ```bash
-npx create-ai-docs
+npx speckit-ai
 # hoặc
-npx create-ai-docs --mode=existing
+npx speckit-ai --mode=existing
 ```
 
 ## Vấn đề giải quyết
@@ -36,4 +36,4 @@ AI Agent (Gemini, Claude, Cursor, Copilot) không biết context của từng d�
 
 - Node.js >= 18
 - Chạy được trên Windows, macOS, Linux
-- Publish lên npm registry dưới tên `create-ai-docs`
+- Publish lên npm registry dưới tên `speckit-ai`

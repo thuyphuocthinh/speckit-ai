@@ -1,87 +1,90 @@
 ---
 name: spec-review
-description: Tự review code đã implement theo spec, tạo review.md với đầy đủ các loại review phù hợp với feature type. Trigger khi người dùng nói "review feature", "kiểm tra", "self-review".
+description: Self-review implemented code against the spec and create review.md with appropriate review types based on feature type. Trigger when the user says "review feature", "check", "self-review".
 ---
 
 # Skill: Review (spec-review)
 
-## Khi nào trigger
+## When to trigger
 
-Khi người dùng muốn AI tự review feature đã implement.
+When the user wants the AI to self-review an implemented feature.
 
 Trigger phrases:
-- "Review feature [tên]"
-- "Kiểm tra [feature] trước khi tôi xem"
+- "Review feature [name]"
+- "Check [feature] before I look at it"
 - "Self-review [feature]"
-- "Review xong chưa?"
+- "Is the review done?"
 
-## Quy trình thực hiện
+## Process
 
-### Bước 1 — Đọc context
+### Step 1 — Read context
 
-Đọc theo thứ tự:
-1. `specs/features/<tên>/spec.md` → biết Acceptance Criteria và Feature Type
-2. `specs/features/<tên>/tasks.md` → biết những gì đã được implement
-3. `docs/core-principles-and-coding-standards/coding-conventions.md` → tiêu chuẩn code
+Read in this order:
+1. `specs/active/<name>/targets/*.md` → know the Acceptance Criteria and Feature Type (if several works are active, ask which one)
+2. `specs/active/<name>/tasks.md` → know what was implemented
+3. `docs/core-principles-and-coding-standards/coding-conventions.md` → the code standards
 
-### Bước 2 — Xác định loại review cần làm
+### Step 2 — Determine which reviews are needed
 
-Dựa vào **Feature Type** trong spec.md:
+Based on **Feature Type** in the target spec:
 
-| Feature Type | Review cần làm |
+| Feature Type | Reviews required |
 |---|---|
-| UI / Logic đơn giản | 5a (Code) + 5e (Tổng hợp) |
-| Có API / business logic | 5a + 5b (Test) + 5e |
-| Nhạy cảm (auth, payment, data) | 5a + 5b + 5c (Security) + 5e |
-| Refactor lớn | 5a + 5d (Performance) + 5e |
+| Simple UI / Logic | 5a (Code) + 5e (Summary) |
+| API / business logic | 5a + 5b (Test) + 5e |
+| Sensitive (auth, payment, data) | 5a + 5b + 5c (Security) + 5e |
+| Large refactor | 5a + 5d (Performance) + 5e |
 
-### Bước 3 — Thực hiện review và tạo review.md
+### Step 3 — Perform review and create review.md
 
 ```
-specs/features/<tên>/review.md
+specs/active/<name>/review.md
 ```
 
-#### 5a. Code Review (mọi feature)
+#### 5a. Code Review (all features)
 
-Kiểm tra từng file đã tạo/sửa:
-- Có đặt đúng thư mục theo `docs/structure.md` không?
-- Có tuân theo naming convention không?
-- Có dead code, unused import, hardcoded value (magic number, hardcoded URL) không?
-- Logic có dễ đọc không? Có cần comment giải thích không?
-- Có duplicate logic đã tồn tại ở nơi khác không?
+Act as a strict Senior Architect. Check each created/modified file:
+- **Clean Code & SOLID**: Does the code violate Single Responsibility? Is business logic leaking into Controllers instead of Services/Domain? 
+- **Reference Pattern**: Did the code follow the established patterns in the project (e.g., Dependency Injection, error handling)?
+- Placed in the correct directory per `docs/structure.md`?
+- Naming conventions followed?
+- Dead code, unused imports, hardcoded values (magic numbers, hardcoded URLs)?
+- Is the logic readable? Does it need explanatory comments?
+- Duplicate logic that already exists elsewhere?
+- *If the code violates SOLID or Clean Code principles, you MUST reject it and instruct the Coder to refactor.*
 
-#### 5b. Test Review (feature có API / logic)
+#### 5b. Test Review (API / logic features)
 
-- Happy path đã được test chưa?
-- Edge cases đã được test chưa? (null, empty, boundary values)
-- Error cases đã được test chưa? (404, 400, 500)
-- Test có đang test implementation thay vì behavior không? (anti-pattern)
+- Happy path tested?
+- Edge cases tested? (null, empty, boundary values)
+- Error cases tested? (404, 400, 500)
+- Are tests testing behavior rather than implementation? (avoid testing internals)
 
-#### 5c. Security Review (feature nhạy cảm)
+#### 5c. Security Review (sensitive features)
 
-- Input từ client có được validate/sanitize trước khi xử lý không?
-- Response có trả về thông tin nhạy cảm không cần thiết không? (password hash, internal ID, stack trace)
-- Log có ghi thông tin nhạy cảm không? (token, password, PII)
-- Authentication đúng chưa? Authorization đúng chưa? (đúng role, đúng ownership)
-- SQL injection khả năng có không?
-- Nếu có file upload: loại file, kích thước, tên file có được validate không?
+- Client input validated/sanitized before processing?
+- Response returning unnecessary sensitive data? (password hash, internal ID, stack trace)
+- Logs recording sensitive data? (token, password, PII)
+- Auth correct? Authorization correct? (correct role, correct ownership)
+- SQL injection possible?
+- If file upload: file type, size, filename validated?
 
-#### 5d. Performance Review (refactor lớn / query nặng)
+#### 5d. Performance Review (large refactors)
 
-- Có N+1 query không? (vòng lặp gọi DB)
-- Có query thiếu index không?
-- Có memory leak tiềm ẩn không? (event listener không được cleanup, large data in memory)
-- Response time ước tính có đạt yêu cầu trong spec không?
+- N+1 queries? (loop with DB calls)
+- Queries missing indexes?
+- Potential memory leaks? (event listeners not cleaned up, large data in memory)
+- Estimated response time meets spec requirements?
 
-#### 5e. Tổng hợp (mọi feature)
+#### 5e. Summary (all features)
 
-- Tick từng Acceptance Criteria trong spec.md, ghi rõ Pass/Fail và lý do
-- Nếu có Fail → mô tả vấn đề và cách fix
-- Lessons Learned: ghi lại insight hoặc quyết định đáng nhớ
+- Check off each Acceptance Criteria from the target specs, note Pass/Fail with reason
+- If Fail → describe the issue and how to fix it
+- Lessons Learned: note any insight or decision worth remembering
 
-### Bước 4 — Kết luận
+### Step 4 — Conclusion
 
-Sau khi viết review.md:
-- Nếu tất cả AC pass và không có issue nghiêm trọng → báo "✅ Sẵn sàng archive"
-- Nếu có issue → liệt kê rõ, fix xong mới archive
-- Gợi ý: "Chạy `Move-Item specs/features/<tên> specs/features/done/<tên>` để archive"
+After writing review.md:
+- If all AC pass and no critical issues → report "✅ Ready for done"
+- If issues exist → list them clearly and fix them first
+- Suggest: "Run `npx speckit-ai lint` then `npx speckit-ai done` to finish" (`done` requires a non-empty review.md and fully checked tasks)

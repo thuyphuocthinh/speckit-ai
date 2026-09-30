@@ -1,70 +1,84 @@
 ---
 name: spec-create
-description: Tạo spec.md chuẩn SDD từ yêu cầu của người dùng. Trigger khi người dùng nói "tạo spec cho feature", "viết spec", "bắt đầu feature mới".
+description: Start a piece of work and write the SDD spec from user requirements (new feature, change to existing features, or just save an idea). Trigger when the user says "create spec for feature", "write spec", "start new feature", "add an idea".
 ---
 
-# Skill: Tạo Spec (spec-create)
+# Skill: Create Spec (spec-create)
 
-## Khi nào trigger
+## When to trigger
 
-Khi người dùng muốn bắt đầu một feature mới hoặc yêu cầu viết spec.
+When the user wants to start a new feature, change existing features, or note an idea for later.
 
-Ví dụ trigger phrases:
-- "Tạo spec cho feature: ..."
-- "Viết spec cho ..."
-- "Bắt đầu feature mới: ..."
+Example trigger phrases:
+- "Create spec for feature: ..."
+- "Write spec for ..."
+- "Start new feature: ..."
+- "Change the auth feature to support ..."
+- "Note an idea: ..."
 
-## Quy trình thực hiện
+## Process
 
-### Bước 1 — Xác định thông tin còn thiếu
+### Step 0 — Just an idea?
 
-Trước khi viết spec, hỏi lại người dùng những điều chưa rõ:
-- Feature này làm gì chính xác?
-- Ai là người dùng cuối?
-- Có constraint nào về performance, security không?
-- Có gì nằm ngoài scope không?
-
-> Chỉ hỏi những gì thực sự chưa rõ. Không hỏi những điều đã rõ trong yêu cầu ban đầu.
-
-### Bước 2 — Xác định Feature Type
-
-Phân loại feature dựa trên mô tả:
-- Bugfix nhỏ (< 30 phút) → chỉ cần commit message, không cần spec
-- Feature UI / Logic đơn giản → review cơ bản
-- Feature có API / business logic → + test review
-- Feature nhạy cảm (auth, payment, data export) → + security review
-- Refactor lớn → + performance review
-
-### Bước 3 — Tạo thư mục và file
+If the user only wants to note something for later, run:
 
 ```
-specs/features/<tên-feature-kebab-case>/spec.md
+npx speckit-ai idea "<title>"
 ```
 
-Tên thư mục: kebab-case, ngắn gọn, mô tả được feature.
-Ví dụ: `user-avatar-upload`, `auth-refresh-token`, `product-search`
+Fill in the Problem and Rough Scope (and `Depends-on` / `Affects` if known), then stop.
 
-### Bước 4 — Viết spec.md theo template
+### Step 1 — Identify missing information
 
-Dùng template tại `specs/_template.md`. Đảm bảo:
+Before writing the spec, ask the user about anything unclear:
+- What exactly does this feature do?
+- Who is the end user?
+- Any performance or security constraints?
+- What is explicitly out of scope?
 
-**Overview**: 2-3 câu, rõ ràng, không dùng jargon không cần thiết.
+> Only ask about what is genuinely unclear. Do not ask about things already stated in the request.
 
-**Feature Type**: Check đúng loại để xác định review cần thiết ở bước 5.
+### Step 2 — Determine Feature Type
 
-**Acceptance Criteria**: Mỗi criterion phải:
-- Testable (có thể verify được bằng test hoặc manual)
-- Cụ thể (không mơ hồ)
-- Đo lường được
+Classify the feature based on the description:
+- Small bugfix (< 30 min) → commit message only, no spec needed (see `specs/_workflow.md`, "Bugs and hotfixes")
+- Simple UI / Logic feature → basic review
+- Feature with API / business logic → + test review
+- Sensitive feature (auth, payment, data export) → + security review
+- Large refactor → + performance review
 
-Ví dụ tốt: `Khi upload file > 5MB → trả về lỗi 400 với message "File too large"`
-Ví dụ xấu: `Upload hoạt động tốt`
+### Step 3 — Start the work
 
-**Open Questions**: Liệt kê những điều chưa rõ cần confirm trước khi code. Nếu không có → để trống mục này.
+```
+npx speckit-ai start "<title>"                          # a new feature (or the name of an idea)
+npx speckit-ai start "<title>" --affects=auth,order     # change existing features
+```
 
-### Bước 5 — Báo cáo
+This creates `specs/active/<name>/` with `proposal.md`, `tasks.md` and `targets/`. For existing features, `targets/` holds a copy of each spec to edit. Never edit `specs/features/*/spec.md` directly for a real change.
 
-Sau khi tạo xong, thông báo:
-- Đường dẫn file spec vừa tạo
-- Tóm tắt feature type và review sẽ cần
-- Bước tiếp theo: "Gõ 'tạo plan từ spec này' để tiếp tục"
+### Step 4 — Write the spec in `targets/<feature>.md`
+
+Follow the structure of `specs/_template.md`. Ensure:
+
+**Overview**: 2-3 sentences, clear, no unnecessary jargon.
+
+**Feature Type**: Check the correct type to determine the review steps needed.
+
+**Acceptance Criteria**: One heading per criterion, `### AC-1: <short name>`, followed by Given / When / Then. Each must be:
+- Testable (verifiable by test or manual check)
+- Specific (no ambiguity)
+- Measurable
+
+Good example: `When uploading a file > 5MB → return 400 error with message "File too large"`
+Bad example: `Upload works correctly`
+
+**Open Questions**: List anything unclear that must be confirmed before coding as `- [ ] question`. Resolve them (`- [x]`) or remove them before implementing. If none → leave this section empty.
+
+Replace every `<placeholder>` from the template. Leave `## Changelog` as it is: `done` writes it.
+
+### Step 5 — Report
+
+After writing the spec, notify the user:
+- Path to the spec file(s) just written
+- Summary of feature type and review steps required
+- Next step: "Type 'create plan from this spec' to continue"

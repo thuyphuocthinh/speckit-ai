@@ -21,9 +21,11 @@ Khi nhận bất kỳ task nào, AI phải đọc theo thứ tự sau:
 
 ## SDD Workflow
 
-Mọi feature mới đều phải đi qua SDD cycle:
+Mọi feature (mới hoặc thay đổi) đều phải đi qua SDD cycle:
 ```
-specs/features/<tên>/spec.md → plan.md → tasks.md → implement → review.md
+idea → start → spec (targets/) → plan.md → tasks.md → implement → review.md → done
 ```
+
+Việc đang làm nằm ở `specs/active/<tên>/`; spec đã xong nằm ở `specs/features/<slug>/spec.md`. Không đọc `specs/.history/`.
 
 Xem chi tiết tại `specs/_workflow.md`.

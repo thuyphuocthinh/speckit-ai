@@ -19,7 +19,7 @@ npx speckit-ai handoff
 ```
 
 ### What happens under the hood?
-1. The CLI scans your project for the currently active feature in the `changes/` directory.
+1. The CLI finds your active work in `specs/active/` (if several works are active, pass its name: `npx speckit-ai handoff <name>`).
 2. It runs `git diff` to capture all your uncommitted work.
 3. It sends this diff to an LLM to generate a clear, human-readable summary of exactly what has been done and what is left to do.
 4. It appends this summary directly to the bottom of your `tasks.md` file.
@@ -34,21 +34,21 @@ When you open a brand new AI chat (with a fresh context window), the AI will rea
 Once the feature is fully coded, **do not** ask your IDE's chat window to review the code. Instead, open a terminal and run the independent review command.
 
 ```bash
-npx speckit-ai review "Your Feature Name"
+npx speckit-ai review            # or: npx speckit-ai review <work-name> when several works are active
 ```
 
 ### Reference Files (The Gold Standard)
 Telling an AI to "write clean code" often results in over-engineered abstractions. To get *actual* clean code, provide a **Reference File** using the `--ref` flag:
 
 ```bash
-npx speckit-ai review "Your Feature Name" --ref="src/modules/core/reference.ts"
+npx speckit-ai review --ref="src/modules/core/reference.ts"
 ```
 
 ### What happens under the hood?
 1. **Fresh Context:** The CLI spawns a completely isolated API request to the LLM.
 2. **Strict Architect Persona:** The AI acts as a Senior Architect, totally unbiased.
 3. **The Audit:** It compares your `git diff` against:
-   - The Acceptance Criteria in your `spec.md` (or `delta-specs.md`).
+   - The Acceptance Criteria in the spec(s) under `targets/` of your active work.
    - The Clean Code / SOLID rules in your `.agents/AGENTS.md`.
    - The architectural patterns in your `--ref` file.
 4. **The Verdict:** 

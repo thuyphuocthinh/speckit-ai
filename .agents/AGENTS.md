@@ -1,6 +1,6 @@
 # AGENTS.md — create-ai-doc-cli
 
-> Đây là project Node.js CLI tool, publish lên npm dưới dạng `create-ai-docs`.
+> Đây là project Node.js CLI tool, publish lên npm dưới dạng `speckit-ai`.
 > Mục tiêu: Scaffold cấu trúc AI-first (4-layer docs + SDD) cho bất kỳ dự án nào.
 
 ---
@@ -35,6 +35,17 @@
 
 ## ℹ️ Important Notes
 
-- Template files nằm ở `templates/` — không sửa trực tiếp, phải qua `src/scaffolder.js`
+- Mọi lệnh CLI được điều phối ở `src/cli.js`; `bin/index.js` chỉ gọi nó
+- Template nằm ở `templates/` — sửa trực tiếp được (đó là nguồn của mọi file scaffold ra). Thay đổi template ảnh hưởng nội dung được scaffold thì phải có test trong `tests/scaffolder.test.js`
 - Mọi thay đổi logic đều phải có unit test tương ứng trong `tests/`
 - Khi thêm template framework mới → phải cập nhật `src/detector.js` và `docs/technology.md`
+- KHÔNG chạy `node bin/index.js` (không đối số) trong chính repo này: nó scaffold vào repo và sửa `.git/info/exclude`. Thử CLI trong thư mục tạm
+- Repo này track `specs/` trong git (khác với project của người dùng, nơi specs bị stealth). Xóa file trong `specs/` ở đây là thay đổi git, có thể khôi phục
+
+---
+
+## 🔄 Quy trình làm việc trên repo này
+
+- Feature hoặc thay đổi spec → dùng chính flow của tool: `npx speckit-ai start "<tên>"`, viết spec trong `specs/active/<tên>/targets/`, xong chạy `npx speckit-ai lint` và `npx speckit-ai done`
+- Đọc `specs/_workflow.md` để biết các cổng kiểm tra và cách xử lý hotfix
+- Không đọc hoặc sửa `specs/.history/`

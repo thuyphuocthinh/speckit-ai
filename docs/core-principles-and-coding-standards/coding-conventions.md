@@ -24,7 +24,7 @@ Tất cả error phải có message rõ ràng, không throw generic Error:
 ```javascript
 // ✅ Đúng
 if (!fs.existsSync(projectPath)) {
-  throw new Error(`[create-ai-docs] Không tìm thấy thư mục: ${projectPath}`);
+  throw new Error(`[speckit-ai] Không tìm thấy thư mục: ${projectPath}`);
 }
 
 // ❌ Sai
@@ -56,9 +56,9 @@ Scaffolder sẽ replace placeholder trước khi ghi ra file.
 
 ## Logging
 
-Dùng prefix `[create-ai-docs]` cho mọi output ra console:
+Dùng prefix `[speckit-ai]` cho mọi output ra console:
 
 ```javascript
-console.log('[create-ai-docs] ✅ Đã tạo .agents/AGENTS.md');
-console.error('[create-ai-docs] ❌ Lỗi: ...');
+console.log('[speckit-ai] ✅ Đã tạo .agents/AGENTS.md');
+console.error('[speckit-ai] ❌ Lỗi: ...');
 ```

@@ -26,6 +26,6 @@
 
 ## Phân phối
 
-- Publish lên **npm registry** dưới tên `create-ai-docs`
+- Publish lên **npm registry** dưới tên `speckit-ai`
 - Entry point: `bin/index.js` (khai báo trong `package.json` field `bin`)
-- Chạy được bằng `npx create-ai-docs` không cần cài toàn cục
+- Chạy được bằng `npx speckit-ai` không cần cài toàn cục

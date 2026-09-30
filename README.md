@@ -4,7 +4,7 @@
 [![node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![license MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **Spec first, code second.** Scaffold AI-ready workspace documentation into any project — new or existing.
+> **Spec first, code second.** Scaffold AI-ready workspace documentation into any project — new or existing — and drive a Spec-Driven Development flow that every AI agent follows the same way.
 
 ---
 
@@ -17,23 +17,26 @@ npx speckit-ai
 # Existing project — Let AI write the docs based on your source code!
 npx speckit-ai --mode=auto
 
-# Enforce Spec-Driven Development with Native Git Hook
+# Run 'lint' automatically before every commit (Native Git Hook)
 npx speckit-ai --init-hook
 
-# Generate new specs (Feature, ADR, Contract)
-npx speckit-ai generate feature "Payment Gateway"
+# The SDD flow: idea -> start -> done
+npx speckit-ai idea "Order refund"                # save an idea for later
+npx speckit-ai start "Order refund"               # start a new feature
+npx speckit-ai start "Add 2FA" --affects=auth     # change an existing feature
+npx speckit-ai done                               # check the gates, write specs/features/<slug>/spec.md
 
-# Propose a change (OpenSpec Workflow)
-npx speckit-ai propose "Add Apple Login"
+# Decision records and contracts, next to the feature they affect
+npx speckit-ai generate adr "Use TOTP for 2FA" --for=auth
+
+# Generate test skeleton from Acceptance Criteria
+npx speckit-ai generate tests
 
 # Context Handoff for AI
 npx speckit-ai handoff
 
 # AI Code Review (Strict SOLID & AC checks)
-npx speckit-ai review "Add Apple Login" [--ref=<file>]
-
-# Generate test skeleton from Acceptance Criteria
-npx speckit-ai generate tests "Add Apple Login"
+npx speckit-ai review [--ref=<file>]
 ```
 
 That's it. No config. No install. One command.
@@ -43,14 +46,16 @@ That's it. No config. No install. One command.
 ## What does it do?
 
 - 📄 **Generates 4-layer AI documentation** — project overview, tech stack, structure, conventions — tailored to your framework
-- 🗂️ **Sets up SDD workflow** — `specs/` directory with `_template.md` and `_workflow.md` for spec-driven development
+- 🗂️ **Sets up the SDD workflow** — `specs/` with a spec template, a workflow guide, and skills your AI agent follows
+- 🔄 **One SDD flow** — `idea → start → done`: ideas in `specs/ideas/`, work in `specs/active/`, finished specs in `specs/features/` (fixed paths; plan/tasks are archived out of the way)
+- 🛡️ **Gates the AI cannot skip** — `done` refuses unresolved open questions, missing ACs or review, unchecked tasks, or a spec that changed under you
+- 📝 **Decisions next to features** — ADRs and contracts live with the feature they affect
 - 🤖 **AI Auto-generation** — Can scan your codebase and write the docs for you using Gemini/OpenAI/Claude
-- 🔄 **OpenSpec Workflow** — Isolate feature drafts in `changes/` before merging to `specs/`
 - 🧪 **Test-Protected** — Auto-generate test skeletons matching Acceptance Criteria
-- 🛡️ **Native Git Hook** — Blocks commits without specs or missing UC-ID tags (Strict Traceability)
+- 🪝 **Native Git Hook** — Runs `lint` before every commit
 - 🏗️ **Monorepo & Multi-language** — Supports Python, Go, and JS/TS Monorepos out of the box
 - 🧠 **Installs AI Skills** — `spec-create`, `spec-plan`, `spec-review` skills for AI agents
-- 🙈 **Stealth mode** — adds all generated files to `.git/info/exclude` so they never pollute your `.gitignore`
+- 🙈 **Stealth mode** — adds all generated files to `.git/info/exclude` so they stay local and never pollute your `.gitignore`
 
 ---
 
@@ -66,16 +71,13 @@ npx speckit-ai
 Auto-detects your framework and generates opinionated Best Practices docs:
 
 ```
-[speckit-ai] 🚀 Setting up AI-first workspace...
 [speckit-ai] 🔍 Detected: nextjs / npm
 [speckit-ai] 📝 Creating documentation structure...
 [speckit-ai]   [create] .agents/AGENTS.md
 [speckit-ai]   [create] docs/project-overview.md
 [speckit-ai]   [create] docs/technology.md
-[speckit-ai]   [create] docs/core-principles-and-coding-standards/structure.md
-[speckit-ai]   [create] docs/core-principles-and-coding-standards/coding-conventions.md
 ...
-[speckit-ai] ✅ 14 file(s) created
+[speckit-ai] ✅ 20 file(s) created
 [speckit-ai] 🎉 Done!
 ```
 
@@ -101,6 +103,18 @@ npx speckit-ai --mode=auto
 
 Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
 
+### The SDD flow
+
+```
+speckit-ai idea "Order refund"      → specs/ideas/order-refund.md          (backlog, optional)
+speckit-ai start "Order refund"     → specs/active/order-refund/           (spec → plan → tasks → code → review)
+speckit-ai done                     → specs/features/order-refund/spec.md  (work files archived in specs/.history/)
+```
+
+- **Changing existing features:** `speckit-ai start "Add 2FA" --affects=auth,order` copies those specs into `targets/`. At `done`, each spec is replaced only if nobody changed it since `start`.
+- **Several works at once** are allowed (for example a bug fix while a feature is in progress): pass the work name to `done`, `handoff`, `review`, `generate tests`.
+- **Hotfixes** rarely need `start` — see `specs/_workflow.md` ("Bugs and hotfixes").
+
 ### 🔄 AI Handoff & Review Commands (v1.2.0+)
 
 **1. Handoff Mode**
@@ -108,22 +122,22 @@ If you or your AI hit a context limit, or you need to pause work for the day:
 ```bash
 npx speckit-ai handoff
 ```
-This automatically runs `git diff`, queries the LLM to summarize the current progress, and appends the summary directly to your active `tasks.md`. The next AI agent can seamlessly pick up where you left off.
+This automatically runs `git diff`, queries the LLM to summarize the current progress, and appends the summary directly to the active work's `tasks.md`. The next AI agent can seamlessly pick up where you left off.
 
 **2. Independent AI Code Review**
 To avoid "Confirmation Bias" where an AI says its own code is perfect, use a dedicated review command that runs outside your IDE chat context:
 ```bash
-npx speckit-ai review "Feature Name" --ref="src/modules/core/reference.ts"
+npx speckit-ai review --ref="src/modules/core/reference.ts"
 ```
-The CLI acts as a strict Senior Architect. It checks if your git diff strictly satisfies the Acceptance Criteria in `spec.md` AND follows the SOLID principles defined in `.agents/AGENTS.md`. It will `exit(1)` and block CI/CD if it finds any violations.
+The CLI acts as a strict Senior Architect. It checks if your git diff strictly satisfies the Acceptance Criteria of the active work AND follows the SOLID principles defined in `.agents/AGENTS.md`. It will `exit(1)` and block CI/CD if it finds any violations.
 
 ### 📚 Tutorials & Use Cases
 
-Want to learn how to use Speckit AI in a real-world Agile team? Check out our comprehensive step-by-step tutorials:
+Want to learn how to use Speckit AI in a real-world Agile team? Check out our step-by-step tutorials:
 
-1. [Greenfield Workflow (Building New Features)](./docs/tutorials/01-GREENFIELD_WORKFLOW.md)
-2. [Brownfield Workflow (Modifying Existing Features)](./docs/tutorials/02-BROWNFIELD_WORKFLOW.md)
-3. [Strict Traceability (Enforcing SDD via Git Hooks)](./docs/tutorials/03-STRICT_TRACEABILITY.md)
+1. [New Feature: idea → start → done](./docs/tutorials/01-GREENFIELD_WORKFLOW.md)
+2. [Changing Existing Features, decisions and hotfixes](./docs/tutorials/02-BROWNFIELD_WORKFLOW.md)
+3. [Git Hook and local-only specs](./docs/tutorials/03-GIT_HOOK.md)
 4. [AI Handoff & Review (Solving AI Context Limits & Bias)](./docs/tutorials/04-HANDOFF_AND_REVIEW.md)
 
 ---
@@ -156,10 +170,10 @@ your-project/
 ├── .agents/
 │   ├── AGENTS.md                      ← Primary AI instructions (all tools read this)
 │   └── skills/
-│       ├── spec-create/SKILL.md       ← AI skill: create spec.md
-│       ├── spec-plan/SKILL.md         ← AI skill: create plan.md
+│       ├── spec-create/SKILL.md       ← AI skill: start a work and write the spec
+│       ├── spec-plan/SKILL.md         ← AI skill: create plan.md and tasks.md
 │       └── spec-review/SKILL.md       ← AI skill: self-review (code + test + security)
-├── docs/
+├── docs/                              ← Project-level documentation only
 │   ├── README.md                      ← Required reading order for AI
 │   ├── project-overview.md
 │   ├── technology.md
@@ -172,10 +186,13 @@ your-project/
 │       └── instructions-and-work-flows/
 │           └── adding-a-new-feature.md
 └── specs/
-    ├── _template.md                   ← Copy this when starting a feature
+    ├── _template.md                   ← Spec structure (lint compares specs against it)
     ├── _workflow.md                   ← SDD cycle reference
-    └── features/
-        └── done/                      ← Archive of completed features
+    ├── ideas/                         ← Backlog: one small file per idea
+    ├── active/                        ← Work in progress (created by `start`)
+    ├── features/                      ← Finished specs: features/<slug>/spec.md
+    ├── decisions/                     ← Decision records (ADR) shared by several features
+    └── contracts/                     ← Contracts shared by several features
 ```
 
 ---
@@ -195,20 +212,25 @@ your-project/
 Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycle:
 
 ```
-"Create spec for feature: user avatar upload"
-  → specs/features/user-avatar-upload/spec.md
+"Start feature: user avatar upload. Create the spec"
+  → npx speckit-ai start "User avatar upload"
+  → specs/active/user-avatar-upload/targets/user-avatar-upload.md
 
 "Create plan from the spec"
-  → specs/features/user-avatar-upload/plan.md
+  → specs/active/user-avatar-upload/plan.md
 
 "Create task list"
-  → specs/features/user-avatar-upload/tasks.md
+  → specs/active/user-avatar-upload/tasks.md
 
 "Implement according to tasks.md"
   → Code
 
 "Review — include code review, test review, security review"
-  → specs/features/user-avatar-upload/review.md  ✅ Ready to archive
+  → specs/active/user-avatar-upload/review.md
+
+"Finish"
+  → npx speckit-ai done
+  → specs/features/user-avatar-upload/spec.md  (work files kept in specs/.history/)
 ```
 
 ---
@@ -216,29 +238,40 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 ## Options
 
 ```
-Usage: npx speckit-ai [--mode=<mode>] [--init-hook]
-       npx speckit-ai generate <type> "<title>"
-       npx speckit-ai propose "<title>"
-       npx speckit-ai archive "<title>"
+Usage: npx speckit-ai [--mode=<mode>]
+       npx speckit-ai --init-hook [--force]
+       npx speckit-ai idea "<title>"
+       npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>]
+       npx speckit-ai done [<name>] [--force]
+       npx speckit-ai status [--json]
+       npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
+       npx speckit-ai generate tests [<name>]
        npx speckit-ai lint
+       npx speckit-ai handoff [<name>]
+       npx speckit-ai review [<name>] [--ref=<filepath>]
        npx speckit-ai serve
 
 Options:
   --mode=new       (default) Best Practices templates for your framework
   --mode=existing  AI-PROMPT skeleton docs for an existing codebase
   --mode=auto      Auto-generate project docs based on your source code using LLM
-  --init-hook      Install a native Git pre-commit hook to enforce SDD
+  --init-hook      Install a native Git pre-commit hook that runs "lint" (--force overwrites another hook)
   --help           Show this help message
 
 Commands:
-  lint                             Lint spec files against templates to ensure completeness
+  idea "<Title>"                   Save an idea in specs/ideas/ (backlog)
+  start "<Title|idea>"             Start a work in specs/active/ (new feature, or --affects=<a,b> to change existing features)
+  done [<name>] [--force]          Check gates, write specs to specs/features/, keep work files in specs/.history/
+  status [--json]                  Show active works and ideas in dependency order
+  g, generate adr "<Title>"        New decision record (with --for: next to the feature; else the active work; else specs/decisions/)
+  g, generate contract "<Title>"   New API/Data contract (same placement rules)
+  g, generate tests [<name>]       Test skeleton matching the ACs of the active work
+  lint                             Lint spec files and decision records against templates
+  handoff [<name>]                 Summarize uncommitted code and append to the active work's tasks.md
+  review [<name>] [--ref=<path>]   Review code against the active work's specs and AGENTS.md
   serve                            Start local documentation web server
-  g, generate feature "<Title>"    Generate a new feature spec
-  g, generate adr "<Title>"        Generate a new Architecture Decision Record
-  g, generate contract "<Title>"   Generate a new API/Data Contract
-  g, generate tests "<Keyword>"    Generate a test skeleton matching spec ACs
-  propose "<Title>"                Create a change proposal (OpenSpec Workflow)
-  archive "<Title>"                Merge change proposal to specs and archive it
+
+When several works are active, pass <name> (or --work=<name> for generate).
 ```
 
 ## Custom Templates (v0.2.0+)
