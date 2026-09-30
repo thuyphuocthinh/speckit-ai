@@ -2,16 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-function toKebabCase(str) {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Lược bỏ dấu tiếng Việt
-    .replace(/[^a-zA-Z0-9\s-]/g, '')  // Loại bỏ ký tự đặc biệt
-    .trim()
-    .replace(/\s+/g, '-')             // Thay khoảng trắng bằng dấu gạch ngang
-    .toLowerCase();
-}
+const { toKebabCase, getPaths, listActive, resolveActive } = require('./features');
 
 function getNextAdrNumber(adrsDir) {
   if (!fs.existsSync(adrsDir)) return '0001';
@@ -27,226 +18,164 @@ function getNextAdrNumber(adrsDir) {
   return String(max + 1).padStart(4, '0');
 }
 
-function generate(type, title, targetDir = process.cwd()) {
-  if (!title) {
-    throw new Error('Title is required. Example: speckit-ai generate feature "Payment Gateway"');
+/**
+ * Tìm thư mục đích cho ADR/contract.
+ * - `--for=<feature>`: đặt cạnh feature đó (feature phải tồn tại).
+ * - Không có `--for` mà có việc active: đặt trong việc đó (lúc `done` sẽ được chuyển đi).
+ *   Nhiều việc active thì phải chọn bằng `--work=<tên>`.
+ * - Còn lại: thư mục chung specs/decisions/ hoặc specs/contracts/.
+ * @param {'decisions'|'contracts'} kind
+ */
+function resolveDestinationDir(kind, targetDir, { forFeature, work } = {}) {
+  const paths = getPaths(targetDir);
+
+  if (forFeature) {
+    const slug = toKebabCase(forFeature);
+    if (!fs.existsSync(path.join(paths.features, slug, 'spec.md'))) {
+      throw new Error(`Feature "${slug}" not found in specs/features/.`);
+    }
+    return path.join(paths.features, slug, kind);
   }
 
-  const slug = toKebabCase(title);
-  let tmplPath = '';
-  let destPath = '';
-  let replacedTitle = '';
+  if (work || listActive(targetDir).length > 0) {
+    const { dir } = resolveActive(targetDir, work);
+    return path.join(dir, kind);
+  }
 
-  if (type === 'feature' || type === 'f') {
-    tmplPath = path.join(targetDir, 'specs', '_template.md');
-    destPath = path.join(targetDir, 'specs', 'features', slug, 'spec.md');
-    replacedTitle = `# Spec: ${title}`;
-  } else if (type === 'adr' || type === 'a') {
-    tmplPath = path.join(targetDir, 'docs', 'adrs', '0000-template.md');
-    const adrsDir = path.join(targetDir, 'docs', 'adrs');
-    const nextNum = getNextAdrNumber(adrsDir);
-    destPath = path.join(adrsDir, `${nextNum}-${slug}.md`);
+  return paths[kind];
+}
+
+/**
+ * Sinh file mới từ template của project.
+ * @param {'adr'|'a'|'contract'|'c'} type
+ * @param {string} title
+ * @param {{ forFeature?: string, work?: string }} [options]
+ * @param {string} [targetDir]
+ * @returns {string} đường dẫn file vừa tạo
+ */
+function generate(type, title, options = {}, targetDir = process.cwd()) {
+  if (!title) {
+    throw new Error('Title is required. Example: speckit-ai generate adr "Use JWT for sessions"');
+  }
+
+  const paths = getPaths(targetDir);
+  const slug = toKebabCase(title);
+  let kind;
+  let tmplPath;
+  let fileName;
+  let replacedTitle;
+
+  if (type === 'adr' || type === 'a') {
+    kind = 'decisions';
+    tmplPath = path.join(paths.decisions, '0000-template.md');
     replacedTitle = `# ${title}`;
   } else if (type === 'contract' || type === 'c') {
-    tmplPath = path.join(targetDir, 'specs', 'contracts', '_template.md');
-    destPath = path.join(targetDir, 'specs', 'contracts', `${slug}.md`);
+    kind = 'contracts';
+    tmplPath = path.join(paths.contracts, '_template.md');
+    fileName = `${slug}.md`;
     replacedTitle = `# Contract: ${title}`;
   } else {
-    throw new Error(`Unknown type: ${type}. Supported types: feature (f), adr (a), contract (c).`);
+    throw new Error(`Unknown type: ${type}. Supported types: adr (a), contract (c), tests (t).`);
   }
 
   if (!fs.existsSync(tmplPath)) {
     throw new Error(`Template not found at ${path.relative(targetDir, tmplPath)}. Did you run 'npx speckit-ai' to initialize the project first?`);
   }
 
+  const destDir = resolveDestinationDir(kind, targetDir, options);
+  if (kind === 'decisions') fileName = `${getNextAdrNumber(destDir)}-${slug}.md`;
+  const destPath = path.join(destDir, fileName);
+
   if (fs.existsSync(destPath)) {
     throw new Error(`File already exists: ${path.relative(targetDir, destPath)}`);
   }
 
-  const tmplContent = fs.readFileSync(tmplPath, 'utf8');
-  
   // Replace the first H1 tag
-  const newContent = tmplContent.replace(/^#\s+.+/m, replacedTitle);
+  const newContent = fs.readFileSync(tmplPath, 'utf8').replace(/^#\s+.+/m, replacedTitle);
 
   // Replace Date if present (ADR has Date: {{YEAR}}-MM-DD)
   const today = new Date().toISOString().split('T')[0];
   const finalContent = newContent.replace(/Date: .+/g, `Date: ${today}`);
 
-  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.mkdirSync(destDir, { recursive: true });
   fs.writeFileSync(destPath, finalContent, 'utf8');
 
   console.log(`[speckit-ai] ✅ Generated ${type}: ${path.relative(targetDir, destPath)}`);
   return destPath;
 }
 
-function generateChangeProposal(title, targetFilePath = null, targetDir = process.cwd()) {
-  if (!title) {
-    throw new Error('Title is required. Example: npx speckit-ai propose "Add 2FA"');
+/**
+ * Sinh test skeleton từ các Acceptance Criteria (### AC-n: ...) trong targets/ của việc đang làm.
+ * Mỗi file target có AC cho ra một file tests/specs/<slug>.test.(js|ts).
+ * @param {string} [name] - tên việc active; bỏ trống nếu chỉ có một việc
+ * @returns {string[]} các file test đã tạo
+ */
+function generateTestsFromSpec(name, targetDir = process.cwd()) {
+  const { dir } = resolveActive(targetDir, name);
+  const targetsDir = path.join(dir, 'targets');
+  const targetFiles = fs.existsSync(targetsDir)
+    ? fs.readdirSync(targetsDir).filter((f) => f.endsWith('.md')).sort()
+    : [];
+
+  if (targetFiles.length === 0) {
+    throw new Error(`No target specs found in ${path.relative(targetDir, targetsDir)}.`);
   }
 
-  const slug = toKebabCase(title);
-  const changeDir = path.join(targetDir, 'changes', slug);
-
-  if (fs.existsSync(changeDir)) {
-    throw new Error(`Change "${slug}" already exists.`);
-  }
-
-  fs.mkdirSync(changeDir, { recursive: true });
-
-  if (targetFilePath) {
-    const absTargetPath = path.resolve(targetDir, targetFilePath);
-    if (!fs.existsSync(absTargetPath)) {
-      throw new Error(`Target file not found: ${targetFilePath}`);
-    }
-    
-    fs.copyFileSync(absTargetPath, path.join(changeDir, 'spec-draft.md'));
-    fs.writeFileSync(path.join(changeDir, 'metadata.json'), JSON.stringify({ target: targetFilePath }, null, 2), 'utf8');
-    
-    const proposalContent = `# Proposal: ${title}\n\n## Context & Problem\n<Why are we making this change?>\n\n## Proposed Solution\n<Edit \`spec-draft.md\` to apply changes>\n`;
-    const tasksContent = `# Tasks: ${title}\n\n- [ ] Modify \`spec-draft.md\` to reflect the changes\n- [ ] Update entity models (if any)\n- [ ] Implement code changes\n- [ ] Update/Add tests mapping to AC\n- [ ] Review by PO/BA\n`;
-    
-    fs.writeFileSync(path.join(changeDir, 'proposal.md'), proposalContent, 'utf8');
-    fs.writeFileSync(path.join(changeDir, 'tasks.md'), tasksContent, 'utf8');
-    
-    console.log(`[speckit-ai] 💡 Brownfield change proposal created at: changes/${slug}/`);
-    console.log(`[speckit-ai] 👉 Open changes/${slug}/spec-draft.md to start modifying the target spec.`);
-  } else {
-    const proposalContent = `# Proposal: ${title}\n\n## Context & Problem\n<Why are we making this change?>\n\n## Proposed Solution\n<What is the high-level approach?>\n\n## Impact\n<Which systems/modules are affected?>\n`;
-    const deltaSpecsContent = `# Delta Specs: ${title}\n\n## ADDED\n- <New spec logic>\n\n## MODIFIED\n- <Changed spec logic>\n\n## REMOVED\n- <Removed spec logic>\n`;
-    const tasksContent = `# Tasks: ${title}\n\n- [ ] Update entity models (if any)\n- [ ] Implement code changes\n- [ ] Update/Add tests mapping to AC\n- [ ] Pass characterization tests (if legacy)\n- [ ] Review by PO/BA\n`;
-
-    fs.writeFileSync(path.join(changeDir, 'proposal.md'), proposalContent, 'utf8');
-    fs.writeFileSync(path.join(changeDir, 'delta-specs.md'), deltaSpecsContent, 'utf8');
-    fs.writeFileSync(path.join(changeDir, 'tasks.md'), tasksContent, 'utf8');
-
-    console.log(`[speckit-ai] 💡 Change proposal created at: changes/${slug}/`);
-    console.log(`[speckit-ai] 👉 Open changes/${slug}/proposal.md to explain the "why".`);
-  }
-}
-
-function archiveChange(title, targetDir = process.cwd()) {
-  if (!title) {
-    throw new Error('Title is required. Example: npx speckit-ai archive "Add 2FA"');
-  }
-
-  const slug = toKebabCase(title);
-  const changeDir = path.join(targetDir, 'changes', slug);
-
-  if (!fs.existsSync(changeDir)) {
-    throw new Error(`Change "${slug}" not found in changes/`);
-  }
-
-  const metadataPath = path.join(changeDir, 'metadata.json');
-  
-  if (fs.existsSync(metadataPath)) {
-    // Brownfield: Overwrite target spec with the draft
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-    const absTargetPath = path.resolve(targetDir, metadata.target);
-    const draftPath = path.join(changeDir, 'spec-draft.md');
-    
-    if (!fs.existsSync(draftPath)) {
-      throw new Error(`Draft file not found at ${draftPath}`);
-    }
-    
-    fs.copyFileSync(draftPath, absTargetPath);
-    console.log(`[speckit-ai] ✅ Target spec updated at ${metadata.target}`);
-  } else {
-    // Greenfield: Copy delta specs to baseline specs
-    const deltaSpecsPath = path.join(changeDir, 'delta-specs.md');
-    const targetSpecDir = path.join(targetDir, 'specs', 'features', slug);
-    const targetSpecPath = path.join(targetSpecDir, 'spec.md');
-
-    if (fs.existsSync(deltaSpecsPath)) {
-      fs.mkdirSync(targetSpecDir, { recursive: true });
-      fs.copyFileSync(deltaSpecsPath, targetSpecPath);
-      console.log(`[speckit-ai] ✅ Baseline specs created at specs/features/${slug}/spec.md`);
-    }
-  }
-
-  // Move change folder to archive
-  const archiveDir = path.join(targetDir, 'archive', slug);
-  fs.mkdirSync(path.dirname(archiveDir), { recursive: true });
-  fs.renameSync(changeDir, archiveDir);
-  console.log(`[speckit-ai] ✅ Change moved to archive/${slug}/`);
-}
-
-function findFileRecursively(dir, keyword) {
-  if (!fs.existsSync(dir)) return null;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      const found = findFileRecursively(fullPath, keyword);
-      if (found) return found;
-    } else if (file.toLowerCase().includes(keyword.toLowerCase()) || fullPath.toLowerCase().includes(keyword.toLowerCase())) {
-      return fullPath;
-    }
-  }
-  return null;
-}
-
-function generateTestsFromSpec(keyword, targetDir = process.cwd()) {
-  if (!keyword) {
-    throw new Error('Spec keyword is required. Example: npx speckit-ai generate tests "UC-042" or "add-2fa"');
-  }
-
-  const specsDir = path.join(targetDir, 'specs');
-  const specPath = findFileRecursively(specsDir, keyword);
-
-  if (!specPath) {
-    throw new Error(`Could not find any spec file matching "${keyword}" in specs/ directory.`);
-  }
-
-  const content = fs.readFileSync(specPath, 'utf8');
-  
-  // Extract Title
-  let title = path.basename(specPath, '.md');
-  const titleMatch = content.match(/^#\s+(.+)$/m);
-  if (titleMatch) {
-    title = titleMatch[1];
-  }
-
-  // Extract ACs
   // Matches ### AC-1: Something or ### AC-1 Something
   const acRegex = /^###\s+(AC-\d+)[^\w]*(.+)$/gm;
-  const acs = [];
-  let match;
-  while ((match = acRegex.exec(content)) !== null) {
-    acs.push({ id: match[1], desc: match[2].trim() });
-  }
-
-  if (acs.length === 0) {
-    console.log(`[speckit-ai] ⚠️ No Acceptance Criteria (AC) found in ${path.relative(targetDir, specPath)}.`);
-    console.log(`[speckit-ai] 👉 Please add "### AC-1: <Description>" to your spec file.`);
-    return;
-  }
-
-  const slug = toKebabCase(title);
-  const testDir = path.join(targetDir, 'tests', 'specs');
-  fs.mkdirSync(testDir, { recursive: true });
-  
   const ext = fs.existsSync(path.join(targetDir, 'tsconfig.json')) ? 'ts' : 'js';
-  const testFile = path.join(testDir, `${slug}.test.${ext}`);
+  const testDir = path.join(targetDir, 'tests', 'specs');
+  const planned = [];
 
-  if (fs.existsSync(testFile)) {
-    throw new Error(`Test file already exists: ${path.relative(targetDir, testFile)}`);
+  for (const file of targetFiles) {
+    const content = fs.readFileSync(path.join(targetsDir, file), 'utf8');
+    const acs = [];
+    let match;
+    acRegex.lastIndex = 0;
+    while ((match = acRegex.exec(content)) !== null) {
+      acs.push({ id: match[1], desc: match[2].trim() });
+    }
+
+    if (acs.length === 0) {
+      console.log(`[speckit-ai] ⚠️ No Acceptance Criteria (AC) found in ${path.relative(targetDir, path.join(targetsDir, file))}.`);
+      console.log(`[speckit-ai] 👉 Please add "### AC-1: <Description>" to your spec file.`);
+      continue;
+    }
+
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1] : path.basename(file, '.md');
+    planned.push({
+      title,
+      acs,
+      testFile: path.join(testDir, `${toKebabCase(title) || path.basename(file, '.md')}.test.${ext}`),
+    });
   }
 
-  let testCode = `describe('${title.replace(/'/g, "\\'")}', () => {\n`;
-  for (const ac of acs) {
-    testCode += `  describe('${ac.id}: ${ac.desc.replace(/'/g, "\\'")}', () => {\n`;
-    testCode += `    test('should satisfy acceptance criteria', () => {\n`;
-    testCode += `      // TODO: Implement test for ${ac.id}\n`;
-    testCode += `    });\n`;
-    testCode += `  });\n\n`;
+  const existing = planned.filter((p) => fs.existsSync(p.testFile));
+  if (existing.length > 0) {
+    throw new Error(`Test file already exists: ${existing.map((p) => path.relative(targetDir, p.testFile)).join(', ')}`);
   }
-  testCode += `});\n`;
 
-  fs.writeFileSync(testFile, testCode, 'utf8');
+  const created = [];
+  for (const { title, acs, testFile } of planned) {
+    let testCode = `describe('${title.replace(/'/g, "\\'")}', () => {\n`;
+    for (const ac of acs) {
+      testCode += `  describe('${ac.id}: ${ac.desc.replace(/'/g, "\\'")}', () => {\n`;
+      testCode += `    test('should satisfy acceptance criteria', () => {\n`;
+      testCode += `      // TODO: Implement test for ${ac.id}\n`;
+      testCode += `    });\n`;
+      testCode += `  });\n\n`;
+    }
+    testCode += `});\n`;
 
-  console.log(`[speckit-ai] ✅ Found ${acs.length} Acceptance Criteria in ${path.relative(targetDir, specPath)}`);
-  console.log(`[speckit-ai] ✅ Generated test skeleton: ${path.relative(targetDir, testFile)}`);
-  return testFile;
+    fs.mkdirSync(testDir, { recursive: true });
+    fs.writeFileSync(testFile, testCode, 'utf8');
+    console.log(`[speckit-ai] ✅ Found ${acs.length} Acceptance Criteria for "${title}"`);
+    console.log(`[speckit-ai] ✅ Generated test skeleton: ${path.relative(targetDir, testFile)}`);
+    created.push(testFile);
+  }
+
+  return created;
 }
 
-module.exports = { toKebabCase, getNextAdrNumber, generate, generateChangeProposal, archiveChange, generateTestsFromSpec };
+module.exports = { toKebabCase, getNextAdrNumber, generate, generateTestsFromSpec, resolveDestinationDir };

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getPaths, listDirs, listActive } = require('./features');
 
 /**
  * Lấy danh sách các thẻ heading (vd: '## Security', '### API') từ nội dung Markdown.
@@ -22,46 +23,69 @@ function extractHeaders(content) {
 }
 
 /**
- * Đọc tất cả các file trong một thư mục (đệ quy).
+ * Liệt kê các file .md nằm trực tiếp trong một thư mục (không đệ quy).
  */
-function getMarkdownFiles(dir, fileList = []) {
-  if (!fs.existsSync(dir)) return fileList;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      getMarkdownFiles(fullPath, fileList);
-    } else if (fullPath.endsWith('.md')) {
-      fileList.push(fullPath);
-    }
-  }
-  return fileList;
+function listMarkdown(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => path.join(dir, entry.name))
+    .sort();
 }
 
 /**
- * Thực hiện Lint cho một thư mục cụ thể dựa trên template.
+ * Gom các file cần lint theo bố cục ideas → active → features.
+ * - specFiles: specs/features/<slug>/spec.md và specs/active/<tên>/targets/*.md
+ * - adrFiles: mọi thư mục decisions/ (chung, theo feature, theo việc đang làm)
+ * Chỉ quét các đường dẫn cố định nên plan/tasks/review, .history/ không bao giờ bị chấm.
  */
-function lintDirectory(targetDir, templatePath, scanDir) {
-  const errors = [];
-  
-  if (!fs.existsSync(templatePath)) {
-    return { warnings: [`⚠️ Template not found at ${templatePath}, skipping ${scanDir}`], errors };
+function collectFiles(targetDir) {
+  const paths = getPaths(targetDir);
+  const specFiles = [];
+  const adrFiles = [];
+
+  for (const slug of listDirs(paths.features)) {
+    const specPath = path.join(paths.features, slug, 'spec.md');
+    if (fs.existsSync(specPath)) specFiles.push(specPath);
+    adrFiles.push(...listMarkdown(path.join(paths.features, slug, 'decisions')));
   }
 
-  const templateContent = fs.readFileSync(templatePath, 'utf8');
-  const requiredHeaders = extractHeaders(templateContent);
+  for (const name of listActive(targetDir)) {
+    specFiles.push(...listMarkdown(path.join(paths.active, name, 'targets')));
+    adrFiles.push(...listMarkdown(path.join(paths.active, name, 'decisions')));
+  }
+
+  adrFiles.push(...listMarkdown(paths.decisions));
+
+  const isTemplate = (file) => /^(_template|0000-template)\.md$/.test(path.basename(file));
+  return {
+    specFiles: specFiles.filter((f) => !isTemplate(f)),
+    adrFiles: adrFiles.filter((f) => !isTemplate(f)),
+  };
+}
+
+/**
+ * So các file với template: mỗi heading của template phải có mặt trong file.
+ */
+function lintFiles(files, templatePath, label) {
+  const errors = [];
+
+  if (files.length === 0) return { warnings: [], errors };
+
+  if (!fs.existsSync(templatePath)) {
+    return { warnings: [`⚠️ Template not found at ${templatePath}, skipping ${label}`], errors };
+  }
+
+  // Heading dạng "AC-1: ..." trong template chỉ là ví dụ của từng tiêu chí, không phải section bắt buộc
+  const requiredHeaders = extractHeaders(fs.readFileSync(templatePath, 'utf8'))
+    .filter((h) => !/^ac-\d+\b/.test(h.text));
 
   if (requiredHeaders.length === 0) {
-    return { warnings: [`⚠️ No headers found in template ${templatePath}, skipping ${scanDir}`], errors };
+    return { warnings: [`⚠️ No headers found in template ${templatePath}, skipping ${label}`], errors };
   }
 
-  const filesToLint = getMarkdownFiles(scanDir);
-  // Loại trừ file template khỏi danh sách lint nếu nó nằm chung thư mục
-  const filteredFiles = filesToLint.filter(f => path.basename(f) !== path.basename(templatePath) && path.basename(f) !== '_workflow.md');
-
-  for (const file of filteredFiles) {
-    const content = fs.readFileSync(file, 'utf8');
-    const fileHeaders = extractHeaders(content);
+  for (const file of files) {
+    const fileHeaders = extractHeaders(fs.readFileSync(file, 'utf8'));
     const missingHeaders = [];
 
     for (const req of requiredHeaders) {
@@ -84,26 +108,16 @@ function lintDirectory(targetDir, templatePath, scanDir) {
  * Quét toàn bộ dự án.
  */
 function lint(targetDir) {
-  let totalErrors = [];
-  let totalWarnings = [];
+  const paths = getPaths(targetDir);
+  const { specFiles, adrFiles } = collectFiles(targetDir);
 
-  // Lint thư mục specs/features
-  const featureTemplatePath = path.join(targetDir, 'specs', '_template.md');
-  const featureScanDir = path.join(targetDir, 'specs', 'features');
-  if (fs.existsSync(featureScanDir)) {
-    const result = lintDirectory(targetDir, featureTemplatePath, featureScanDir);
-    totalErrors = totalErrors.concat(result.errors);
-    totalWarnings = totalWarnings.concat(result.warnings);
-  }
+  const results = [
+    lintFiles(specFiles, path.join(paths.specs, '_template.md'), 'specs'),
+    lintFiles(adrFiles, path.join(paths.decisions, '0000-template.md'), 'decisions'),
+  ];
 
-  // Lint thư mục docs/adrs
-  const adrTemplatePath = path.join(targetDir, 'docs', 'adrs', '0000-template.md');
-  const adrScanDir = path.join(targetDir, 'docs', 'adrs');
-  if (fs.existsSync(adrScanDir)) {
-    const result = lintDirectory(targetDir, adrTemplatePath, adrScanDir);
-    totalErrors = totalErrors.concat(result.errors);
-    totalWarnings = totalWarnings.concat(result.warnings);
-  }
+  const totalWarnings = results.flatMap((r) => r.warnings);
+  const totalErrors = results.flatMap((r) => r.errors);
 
   // Báo cáo
   for (const warning of totalWarnings) {
@@ -126,4 +140,4 @@ function lint(targetDir) {
   return true;
 }
 
-module.exports = { lint, extractHeaders };
+module.exports = { lint, extractHeaders, collectFiles };

@@ -163,6 +163,70 @@ describe('scaffold()', () => {
     expect(fs.existsSync(path.join(tmpDir, 'specs', '_workflow.md'))).toBe(true);
   });
 
+  test('AC-13: tạo bố cục specs ideas/active/features/decisions/contracts', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const specs = path.join(tmpDir, 'specs');
+    expect(fs.existsSync(path.join(specs, 'ideas', '_template.md'))).toBe(true);
+    expect(fs.existsSync(path.join(specs, 'active'))).toBe(true);
+    expect(fs.existsSync(path.join(specs, 'features'))).toBe(true);
+    expect(fs.existsSync(path.join(specs, 'decisions', '0000-template.md'))).toBe(true);
+    expect(fs.existsSync(path.join(specs, 'contracts', '_template.md'))).toBe(true);
+  });
+
+  test('AC-13: không tạo docs/adrs, changes, archive, specs/features/done', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    expect(fs.existsSync(path.join(tmpDir, 'docs', 'adrs'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, 'changes'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, 'archive'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, 'specs', 'features', 'done'))).toBe(false);
+  });
+
+  test('AC-13: template spec có Changelog và AC dạng ### AC-n:', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const content = fs.readFileSync(path.join(tmpDir, 'specs', '_template.md'), 'utf8');
+    expect(content).toMatch(/^## Changelog$/m);
+    expect(content).toMatch(/^### AC-1:/m);
+  });
+
+  test('AC-14/15: _workflow.md, AGENTS.md và skill mô tả flow mới, hotfix, và không còn lệnh cũ', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const read = (...p) => fs.readFileSync(path.join(tmpDir, ...p), 'utf8');
+    const workflow = read('specs', '_workflow.md');
+    const agents = read('.agents', 'AGENTS.md');
+
+    for (const cmd of ['speckit-ai idea', 'speckit-ai start', 'speckit-ai done', '--affects', 'Bugs and hotfixes', '.history']) {
+      expect(workflow).toContain(cmd);
+    }
+    expect(agents).toContain('npx speckit-ai done');
+    expect(agents).toContain('specs/.history/');
+
+    const everything = [
+      workflow,
+      agents,
+      read('docs', 'README.md'),
+      read('.agents', 'skills', 'spec-create', 'SKILL.md'),
+      read('.agents', 'skills', 'spec-plan', 'SKILL.md'),
+      read('.agents', 'skills', 'spec-review', 'SKILL.md'),
+      read('docs', 'core-principles-and-coding-standards', 'instructions-and-work-flows', 'adding-a-new-feature.md'),
+    ].join('\n');
+    for (const removed of ['propose', 'features/done', 'Move-Item', 'docs/adrs', 'delta-specs']) {
+      expect(everything).not.toContain(removed);
+    }
+  });
+
+  test('monorepo: specs/ chỉ tạo một lần ở root, không lặp theo sub-project', () => {
+    scaffold({
+      targetDir: tmpDir,
+      projectConfig: {
+        type: 'monorepo',
+        tool: 'workspaces',
+        subProjects: [{ name: 'api', framework: 'nestjs', packageManager: 'npm' }],
+      },
+    });
+    expect(fs.existsSync(path.join(tmpDir, 'specs', 'decisions', '0000-template.md'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'docs', 'api', 'adrs'))).toBe(false);
+  });
+
   test('AGENTS.md chứa tên framework đã render', () => {
     scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
     const content = fs.readFileSync(path.join(tmpDir, '.agents', 'AGENTS.md'), 'utf8');

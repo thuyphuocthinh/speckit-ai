@@ -18,12 +18,12 @@ function renderTemplate(content, vars) {
  */
 function writeFileIfNotExists(filePath, content) {
   if (fs.existsSync(filePath)) {
-    console.log(`[create-ai-docs]   [skip] ${path.relative(process.cwd(), filePath)}`);
+    console.log(`[speckit-ai]   [skip] ${path.relative(process.cwd(), filePath)}`);
     return 'skipped';
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
-  console.log(`[create-ai-docs]   [create] ${path.relative(process.cwd(), filePath)}`);
+  console.log(`[speckit-ai]   [create] ${path.relative(process.cwd(), filePath)}`);
   return 'created';
 }
 
@@ -90,9 +90,6 @@ function buildFileMap(framework, mode = 'new', scope = 'all') {
     { tmpl: docsTmpl('coding-conventions.md.tmpl')    || `${fw}/coding-conventions.md.tmpl`, dest: 'docs/core-principles-and-coding-standards/coding-conventions.md', isDoc: true },
     { tmpl: docsTmpl('coding-style.md.tmpl')          || '_core/coding-style.md.tmpl',   dest: 'docs/core-principles-and-coding-standards/coding-style.md', isDoc: true },
 
-    // docs/adrs/ — same in both modes
-    { tmpl: '_core/adrs/0000-template.md.tmpl',      dest: 'docs/adrs/0000-template.md', isDoc: true },
-
     // docs/instructions-and-work-flows/ — same in both modes
     { tmpl: '_core/workflow-adding-feature.md.tmpl', dest: 'docs/core-principles-and-coding-standards/instructions-and-work-flows/adding-a-new-feature.md', isDoc: true },
 
@@ -100,7 +97,9 @@ function buildFileMap(framework, mode = 'new', scope = 'all') {
     { tmpl: '_core/specs-template.md.tmpl',  dest: 'specs/_template.md', isDoc: false },
     { tmpl: '_core/specs-workflow.md.tmpl',  dest: 'specs/_workflow.md', isDoc: false },
 
-    // specs/contracts/ — same in both modes
+    // specs/ideas/, specs/decisions/, specs/contracts/ — same in both modes
+    { tmpl: '_core/idea.md.tmpl',                  dest: 'specs/ideas/_template.md', isDoc: false },
+    { tmpl: '_core/decisions/0000-template.md.tmpl', dest: 'specs/decisions/0000-template.md', isDoc: false },
     { tmpl: '_core/contracts/_template.md.tmpl', dest: 'specs/contracts/_template.md', isDoc: false },
 
     // .agents/skills/ — same in both modes
@@ -123,7 +122,8 @@ function scaffoldFiles({ targetDir, framework, packageManager, mode, subProjectN
 
   // Tạo thư mục cơ bản
   ensureDir(path.join(targetDir, '.agents', 'skills'));
-  ensureDir(path.join(targetDir, 'specs', 'features', 'done'));
+  ensureDir(path.join(targetDir, 'specs', 'active'));
+  ensureDir(path.join(targetDir, 'specs', 'features'));
   
   const docsPrefix = subProjectName ? `docs/${subProjectName}` : 'docs';
   ensureDir(path.join(targetDir, docsPrefix, 'core-principles-and-coding-standards', 'instructions-and-work-flows'));

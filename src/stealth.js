@@ -10,6 +10,8 @@ const STEALTH_ENTRIES = [
   '.cursorrules',
   'docs/',
   'specs/',
+  '.speckitrc',
+  'speckit.config.json',
 ];
 
 /**
@@ -63,7 +65,7 @@ function apply(targetDir) {
   const gitDir = findGitDir(targetDir);
 
   if (!gitDir) {
-    console.log('[create-ai-docs] ⚠️  Không tìm thấy .git/ — bỏ qua stealth mode');
+    console.log('[speckit-ai] ⚠️  Không tìm thấy .git/ — bỏ qua stealth mode');
     return;
   }
 
@@ -78,7 +80,7 @@ function apply(targetDir) {
   const newContent = appendEntries(currentContent, STEALTH_ENTRIES);
 
   fs.writeFileSync(excludePath, newContent, 'utf8');
-  console.log('[create-ai-docs] 🙈 Stealth mode: đã cập nhật .git/info/exclude');
+  console.log('[speckit-ai] 🙈 Stealth mode: đã cập nhật .git/info/exclude');
 }
 
 module.exports = { apply, findGitDir, readExcludeFile, appendEntries, STEALTH_ENTRIES };

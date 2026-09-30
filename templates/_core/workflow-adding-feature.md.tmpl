@@ -1,25 +1,27 @@
 # Workflow: Adding a New Feature
 
-> Apply this checklist for every new feature. Check each step — do not skip.
+> Apply this checklist for every new feature or spec change. Check each step — do not skip.
 
 ## Checklist
 
 ### Before coding
 
-- [ ] Create spec at `specs/features/<name>/spec.md` (use template from `specs/_template.md`)
-- [ ] Resolve all Open Questions in spec before implementing
-- [ ] Create `plan.md` and `tasks.md` from the spec
+- [ ] `npx speckit-ai start "<title>"` (or `--affects=<feature>` to change an existing feature)
+- [ ] Write the spec in `specs/active/<name>/targets/<feature>.md` (structure from `specs/_template.md`)
+- [ ] Resolve all Open Questions in the spec before implementing
+- [ ] Create `plan.md` and `tasks.md` from the spec (tasks in 4 phases, Tests is mandatory)
 
 ### While coding
 
 - [ ] Place files in the correct directory according to `docs/core-principles-and-coding-standards/structure.md`
 - [ ] Follow patterns in `docs/core-principles-and-coding-standards/coding-conventions.md`
-- [ ] Write unit tests for important logic
+- [ ] Write unit tests for important logic (`npx speckit-ai generate tests` gives a skeleton per `AC-n`)
+- [ ] Record architecture decisions with `npx speckit-ai generate adr "<title>"`
 
 ### Before reporting done
 
 - [ ] `{{PACKAGE_MANAGER}} run lint` — must pass, no warnings
 - [ ] `{{PACKAGE_MANAGER}} run test` — 100% pass
-- [ ] All Acceptance Criteria in `spec.md` checked off
+- [ ] All Acceptance Criteria in the spec checked off
 - [ ] Create `review.md` summarizing what was done and lessons learned
-- [ ] Move spec folder to `specs/features/done/`
+- [ ] `npx speckit-ai lint`, then `npx speckit-ai done` (writes the spec to `specs/features/` and archives the work files)

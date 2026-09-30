@@ -35,4 +35,16 @@ describe('Server Auto Sidebar', () => {
     expect(sidebar).toContain('  * [User login](/features/user-login.md)');
     expect(sidebar).toContain('* [Overview](/overview.md)');
   });
+
+  test('AC-9: bỏ qua thư mục ẩn .history và nội dung bên trong', () => {
+    const historyDir = path.join(tmpDir, '.history', '2026-10-01-old-work');
+    fs.mkdirSync(historyDir, { recursive: true });
+    fs.writeFileSync(path.join(historyDir, 'plan.md'), '# Old plan');
+
+    const sidebar = buildSidebar(tmpDir, tmpDir);
+
+    expect(sidebar).not.toContain('.history');
+    expect(sidebar).not.toContain('old-work');
+    expect(sidebar).not.toContain('Plan');
+  });
 });

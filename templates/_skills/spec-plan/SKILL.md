@@ -1,6 +1,6 @@
 ---
 name: spec-plan
-description: Read spec.md and create a detailed plan.md with technical approach. Trigger when the user says "create plan", "plan from spec", "plan feature".
+description: Read the spec of the active work and create a detailed plan.md with technical approach. Trigger when the user says "create plan", "plan from spec", "plan feature".
 ---
 
 # Skill: Create Plan (spec-plan)
@@ -16,9 +16,9 @@ Trigger phrases:
 
 ## Process
 
-### Step 1 — Read spec.md
+### Step 1 — Read the spec
 
-Read `specs/features/<name>/spec.md`. If there are unresolved Open Questions → notify the user and do not create a plan until they are resolved.
+Read every file in `specs/active/<name>/targets/` and `proposal.md` (if several works are active, ask which one). If there are unresolved Open Questions → notify the user and do not create a plan until they are resolved.
 
 ### Step 2 — Technical analysis
 
@@ -36,7 +36,7 @@ Reference:
 ### Step 3 — Create plan.md
 
 ```
-specs/features/<name>/plan.md
+specs/active/<name>/plan.md
 ```
 
 Required sections:
@@ -54,7 +54,7 @@ Required sections:
 ### Step 4 — Consistency check
 
 After writing the plan:
-- Is every Acceptance Criteria in spec.md covered by at least one file change?
+- Is every Acceptance Criteria in the target specs covered by at least one file change?
 - Are any files placed in the wrong directory per `docs/structure.md`?
 
 ### Step 5 — Creating Tasks (`tasks.md`)

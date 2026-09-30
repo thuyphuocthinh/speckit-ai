@@ -2,23 +2,29 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const llm = require('./llm');
-const { toKebabCase } = require('./generator');
+const { resolveActive } = require('./features');
 
-async function analyze(title, targetDir, referenceFile = null) {
-  if (!title) throw new Error('Please provide the feature title. Usage: npx speckit-ai review "<Title>"');
+/**
+ * Review code (git diff) so với các spec trong targets/ của việc đang làm và AGENTS.md.
+ * @param {string} [name] - tên việc active; bỏ trống nếu chỉ có một việc
+ * @param {string} targetDir
+ * @param {string|null} [referenceFile] - file code mẫu để so sánh (đường dẫn từ root project)
+ */
+async function analyze(name, targetDir, referenceFile = null) {
+  const { dir } = resolveActive(targetDir, name);
 
-  const featureSlug = toKebabCase(title);
-  
-  let specPath = path.join(targetDir, 'specs', 'features', featureSlug, 'spec.md');
-  if (!fs.existsSync(specPath)) {
-    specPath = path.join(targetDir, 'changes', featureSlug, 'delta-specs.md');
-    if (!fs.existsSync(specPath)) {
-       specPath = path.join(targetDir, 'changes', featureSlug, 'spec-draft.md');
-       if (!fs.existsSync(specPath)) throw new Error(`Cannot find spec file for feature "${featureSlug}".`);
-    }
+  const targetsDir = path.join(dir, 'targets');
+  const targetFiles = fs.existsSync(targetsDir)
+    ? fs.readdirSync(targetsDir).filter((f) => f.endsWith('.md')).sort()
+    : [];
+  if (targetFiles.length === 0) {
+    throw new Error(`No target specs found in ${path.relative(targetDir, targetsDir)}.`);
   }
 
-  const specContent = fs.readFileSync(specPath, 'utf-8');
+  const specContent = targetFiles
+    .map((f) => `<!-- ${f} -->\n${fs.readFileSync(path.join(targetsDir, f), 'utf-8')}`)
+    .join('\n\n');
+
   const agentsPath = path.join(targetDir, '.agents', 'AGENTS.md');
   const agentsContent = fs.existsSync(agentsPath) ? fs.readFileSync(agentsPath, 'utf-8') : '';
 
@@ -29,7 +35,7 @@ async function analyze(title, targetDir, referenceFile = null) {
   }
 
   let diff = '';
-  try { diff = execSync('git diff HEAD', { cwd: targetDir, encoding: 'utf-8' }); } 
+  try { diff = execSync('git diff HEAD', { cwd: targetDir, encoding: 'utf-8' }); }
   catch (err) { diff = execSync('git diff', { cwd: targetDir, encoding: 'utf-8' }); }
 
   if (!diff.trim()) throw new Error('No code changes to review.');

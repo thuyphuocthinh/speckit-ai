@@ -44,9 +44,14 @@ describe('appendEntries()', () => {
   });
 
   test('không thay đổi nếu tất cả entry đã có', () => {
-    const existing = '.agents/\nCLAUDE.md\n.cursorrules\ndocs/\nspecs/\n';
+    const existing = STEALTH_ENTRIES.join('\n') + '\n';
     const result = appendEntries(existing, STEALTH_ENTRIES);
     expect(result).toBe(existing);
+  });
+
+  test('STEALTH_ENTRIES cũng exclude file config của speckit-ai', () => {
+    expect(STEALTH_ENTRIES).toContain('.speckitrc');
+    expect(STEALTH_ENTRIES).toContain('speckit.config.json');
   });
 
   test('xử lý đúng content không có newline cuối', () => {

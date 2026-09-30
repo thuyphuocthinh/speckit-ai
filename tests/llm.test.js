@@ -49,6 +49,16 @@ describe('llm.js', () => {
     expect(srcFolder.children).toContain('index.js');
   });
 
+  test('AC-9: scanProject() bỏ qua thư mục ẩn như specs/.history', () => {
+    fs.mkdirSync(path.join(tmpDir, 'specs', '.history', '2026-10-01-old-work'), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, 'specs', 'features'), { recursive: true });
+
+    const context = scanProject(tmpDir);
+
+    const specsFolder = context.structure.find(s => s.dir === 'specs');
+    expect(specsFolder.children).toEqual(['features']);
+  });
+
   test('generateDocs() báo lỗi nếu không có API key', async () => {
     await expect(generateDocs(tmpDir)).rejects.toThrow('API Key is missing');
   });

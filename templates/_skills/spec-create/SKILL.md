@@ -1,20 +1,32 @@
 ---
 name: spec-create
-description: Create a proper SDD spec.md from user requirements. Trigger when the user says "create spec for feature", "write spec", "start new feature".
+description: Start a piece of work and write the SDD spec from user requirements (new feature, change to existing features, or just save an idea). Trigger when the user says "create spec for feature", "write spec", "start new feature", "add an idea".
 ---
 
 # Skill: Create Spec (spec-create)
 
 ## When to trigger
 
-When the user wants to start a new feature or requests a spec to be written.
+When the user wants to start a new feature, change existing features, or note an idea for later.
 
 Example trigger phrases:
 - "Create spec for feature: ..."
 - "Write spec for ..."
 - "Start new feature: ..."
+- "Change the auth feature to support ..."
+- "Note an idea: ..."
 
 ## Process
+
+### Step 0 — Just an idea?
+
+If the user only wants to note something for later, run:
+
+```
+npx speckit-ai idea "<title>"
+```
+
+Fill in the Problem and Rough Scope (and `Depends-on` / `Affects` if known), then stop.
 
 ### Step 1 — Identify missing information
 
@@ -29,30 +41,30 @@ Before writing the spec, ask the user about anything unclear:
 ### Step 2 — Determine Feature Type
 
 Classify the feature based on the description:
-- Small bugfix (< 30 min) → commit message only, no spec needed
+- Small bugfix (< 30 min) → commit message only, no spec needed (see `specs/_workflow.md`, "Bugs and hotfixes")
 - Simple UI / Logic feature → basic review
 - Feature with API / business logic → + test review
 - Sensitive feature (auth, payment, data export) → + security review
 - Large refactor → + performance review
 
-### Step 3 — Create directory and file
+### Step 3 — Start the work
 
 ```
-specs/features/<feature-name-in-kebab-case>/spec.md
+npx speckit-ai start "<title>"                          # a new feature (or the name of an idea)
+npx speckit-ai start "<title>" --affects=auth,order     # change existing features
 ```
 
-Directory name: kebab-case, short, descriptive.
-Examples: `user-avatar-upload`, `auth-refresh-token`, `product-search`
+This creates `specs/active/<name>/` with `proposal.md`, `tasks.md` and `targets/`. For existing features, `targets/` holds a copy of each spec to edit. Never edit `specs/features/*/spec.md` directly for a real change.
 
-### Step 4 — Write spec.md using the template
+### Step 4 — Write the spec in `targets/<feature>.md`
 
-Use the template at `specs/_template.md`. Ensure:
+Follow the structure of `specs/_template.md`. Ensure:
 
 **Overview**: 2-3 sentences, clear, no unnecessary jargon.
 
 **Feature Type**: Check the correct type to determine the review steps needed.
 
-**Acceptance Criteria**: Each criterion must be:
+**Acceptance Criteria**: One heading per criterion, `### AC-1: <short name>`, followed by Given / When / Then. Each must be:
 - Testable (verifiable by test or manual check)
 - Specific (no ambiguity)
 - Measurable
@@ -60,11 +72,13 @@ Use the template at `specs/_template.md`. Ensure:
 Good example: `When uploading a file > 5MB → return 400 error with message "File too large"`
 Bad example: `Upload works correctly`
 
-**Open Questions**: List anything unclear that must be confirmed before coding. If none → leave this section empty.
+**Open Questions**: List anything unclear that must be confirmed before coding as `- [ ] question`. Resolve them (`- [x]`) or remove them before implementing. If none → leave this section empty.
+
+Replace every `<placeholder>` from the template. Leave `## Changelog` as it is: `done` writes it.
 
 ### Step 5 — Report
 
-After creating the spec, notify the user:
-- Path to the spec file just created
+After writing the spec, notify the user:
+- Path to the spec file(s) just written
 - Summary of feature type and review steps required
 - Next step: "Type 'create plan from this spec' to continue"

@@ -20,13 +20,13 @@ Trigger phrases:
 ### Step 1 — Read context
 
 Read in this order:
-1. `specs/features/<name>/spec.md` → know the Acceptance Criteria and Feature Type
-2. `specs/features/<name>/tasks.md` → know what was implemented
+1. `specs/active/<name>/targets/*.md` → know the Acceptance Criteria and Feature Type (if several works are active, ask which one)
+2. `specs/active/<name>/tasks.md` → know what was implemented
 3. `docs/core-principles-and-coding-standards/coding-conventions.md` → the code standards
 
 ### Step 2 — Determine which reviews are needed
 
-Based on **Feature Type** in spec.md:
+Based on **Feature Type** in the target spec:
 
 | Feature Type | Reviews required |
 |---|---|
@@ -38,7 +38,7 @@ Based on **Feature Type** in spec.md:
 ### Step 3 — Perform review and create review.md
 
 ```
-specs/features/<name>/review.md
+specs/active/<name>/review.md
 ```
 
 #### 5a. Code Review (all features)
@@ -78,13 +78,13 @@ Act as a strict Senior Architect. Check each created/modified file:
 
 #### 5e. Summary (all features)
 
-- Check off each Acceptance Criteria from spec.md, note Pass/Fail with reason
+- Check off each Acceptance Criteria from the target specs, note Pass/Fail with reason
 - If Fail → describe the issue and how to fix it
 - Lessons Learned: note any insight or decision worth remembering
 
 ### Step 4 — Conclusion
 
 After writing review.md:
-- If all AC pass and no critical issues → report "✅ Ready to archive"
-- If issues exist → list them clearly, fix before archiving
-- Suggest: "Run `Move-Item specs/features/<name> specs/features/done/<name>` to archive"
+- If all AC pass and no critical issues → report "✅ Ready for done"
+- If issues exist → list them clearly and fix them first
+- Suggest: "Run `npx speckit-ai lint` then `npx speckit-ai done` to finish" (`done` requires a non-empty review.md and fully checked tasks)

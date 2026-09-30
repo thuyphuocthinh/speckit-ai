@@ -1,14 +1,11 @@
-# Spec Template
+# Spec: <Feature Name>
 
-> Copy this file to `specs/features/<feature-name>/spec.md` when starting a new feature.
-
----
-
-# Spec: [Feature Name]
+> **Decisions**:
+> **Contracts**:
 
 ## Overview
 
-Brief description (2-3 sentences): what this feature does, why it's needed, who uses it.
+<Brief description (2-3 sentences): what this feature does, why it's needed, who uses it.>
 
 ## Feature Type
 
@@ -21,25 +18,30 @@ Brief description (2-3 sentences): what this feature does, why it's needed, who 
 
 ## User Stories
 
-- As a [role], I want [action] so that [benefit]
+- As a <role>, I want <action> so that <benefit>
 
 ## Acceptance Criteria
 
-- [ ] Criterion 1 — must be testable, measurable, specific
-- [ ] Criterion 2
-- [ ] Criterion 3
+<!-- One `### AC-n:` block per criterion. Must be testable, measurable, specific.
+     `speckit-ai generate tests` reads these headings. -->
+
+### AC-1: <Short name>
+Given <precondition>
+When <action>
+Then <observable result>
 
 ## Technical Constraints
 
-- Related frameworks / APIs
-- Performance requirements (if any)
-- Security requirements (if any)
-- Breaking change? Backward compatible?
+- <Related frameworks / APIs, performance and security requirements, breaking changes?>
 
 ## Out of Scope
 
-- Explicitly list what will NOT be done in this feature (prevent scope creep)
+- <Explicitly list what will NOT be done in this feature (prevent scope creep)>
 
 ## Open Questions
 
-- [ ] Question 1 — must be resolved before coding
+- [ ] <Question — must be resolved before `speckit-ai done`>
+
+## Changelog
+
+<!-- Lines are appended by `speckit-ai done`. Do not edit by hand. -->

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { toKebabCase, getNextAdrNumber, generate, generateChangeProposal, archiveChange, generateTestsFromSpec } = require('../src/generator');
+const { toKebabCase, getNextAdrNumber, generate, generateTestsFromSpec } = require('../src/generator');
 
 function createTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'speckit-generator-test-'));
@@ -15,208 +15,207 @@ function cleanupDir(dir) {
 describe('Generator Unit Tests', () => {
   let tmpDir;
 
+  function write(rel, content = '# x\n') {
+    const full = path.join(tmpDir, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content, 'utf8');
+    return full;
+  }
+
+  function read(rel) {
+    return fs.readFileSync(path.join(tmpDir, rel), 'utf8');
+  }
+
+  function exists(rel) {
+    return fs.existsSync(path.join(tmpDir, rel));
+  }
+
+  const ADR_TEMPLATE = '# Title of the Decision\n\n* Status: proposed\n* Date: 2026-MM-DD\n\n## Context and Problem Statement\n';
+  const CONTRACT_TEMPLATE = '# Contract: [Service / Component Name]\n\n> **Version**: 1.0.0\n\n## 1. Overview\n';
+
   beforeEach(() => {
     tmpDir = createTempDir();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
     cleanupDir(tmpDir);
+    jest.restoreAllMocks();
   });
 
   describe('toKebabCase()', () => {
     test('chuẩn hóa chuỗi cơ bản', () => {
-      expect(toKebabCase('Payment Gateway')).toBe('payment-gateway');
+      expect(toKebabCase('Hello World')).toBe('hello-world');
     });
 
     test('loại bỏ dấu tiếng Việt', () => {
-      expect(toKebabCase('Thanh toán VNPay')).toBe('thanh-toan-vnpay');
+      expect(toKebabCase('Thêm tính năng Đăng nhập')).toBe('them-tinh-nang-dang-nhap');
     });
 
     test('loại bỏ ký tự đặc biệt', () => {
-      expect(toKebabCase('Auth & Login (v2)')).toBe('auth-login-v2');
+      expect(toKebabCase('Feature: Login! (v2)')).toBe('feature-login-v2');
     });
   });
 
   describe('getNextAdrNumber()', () => {
     test('trả về 0001 nếu thư mục chưa tồn tại', () => {
-      expect(getNextAdrNumber(path.join(tmpDir, 'adrs'))).toBe('0001');
+      expect(getNextAdrNumber(path.join(tmpDir, 'nope'))).toBe('0001');
     });
 
     test('trả về số tiếp theo đúng định dạng', () => {
-      const adrsDir = path.join(tmpDir, 'adrs');
-      fs.mkdirSync(adrsDir, { recursive: true });
-      fs.writeFileSync(path.join(adrsDir, '0001-test.md'), '');
-      fs.writeFileSync(path.join(adrsDir, '0003-hello.md'), '');
-      // Skip 0002 to test max finding
-      
-      expect(getNextAdrNumber(adrsDir)).toBe('0004');
+      write('decisions/0000-template.md');
+      write('decisions/0007-x.md');
+      write('decisions/notes.md');
+      expect(getNextAdrNumber(path.join(tmpDir, 'decisions'))).toBe('0008');
     });
   });
 
   describe('generate()', () => {
     test('báo lỗi nếu thiếu title', () => {
-      expect(() => generate('feature', '', tmpDir)).toThrow('Title is required');
+      expect(() => generate('adr', '', {}, tmpDir)).toThrow('Title is required');
+    });
+
+    test('báo lỗi nếu type không hợp lệ (feature không còn được hỗ trợ)', () => {
+      expect(() => generate('feature', 'X', {}, tmpDir)).toThrow('Unknown type: feature');
     });
 
     test('báo lỗi nếu không có template', () => {
-      expect(() => generate('feature', 'Test', tmpDir)).toThrow('Template not found');
+      expect(() => generate('adr', 'Use JWT', {}, tmpDir)).toThrow('Template not found');
     });
 
-    test('generate feature spec thành công', () => {
-      // Mock template
-      const tmplDir = path.join(tmpDir, 'specs');
-      fs.mkdirSync(tmplDir, { recursive: true });
-      fs.writeFileSync(path.join(tmplDir, '_template.md'), '# Spec: Title\nSome content');
+    test('AC-10: không có việc active và không có --for thì ADR vào specs/decisions/ với số thứ tự', () => {
+      write('specs/decisions/0000-template.md', ADR_TEMPLATE);
+      write('specs/decisions/0001-old.md');
 
-      const dest = generate('feature', 'User Login', tmpDir);
-      
-      expect(fs.existsSync(dest)).toBe(true);
-      expect(dest.endsWith('user-login\\spec.md') || dest.endsWith('user-login/spec.md')).toBe(true);
-      
-      const content = fs.readFileSync(dest, 'utf8');
-      expect(content).toContain('# Spec: User Login');
+      const dest = generate('adr', 'Use JWT', {}, tmpDir);
+
+      expect(dest).toBe(path.join(tmpDir, 'specs', 'decisions', '0002-use-jwt.md'));
+      const content = read('specs/decisions/0002-use-jwt.md');
+      expect(content).toMatch(/^# Use JWT$/m);
+      expect(content).toMatch(/Date: \d{4}-\d{2}-\d{2}/);
+      expect(content).not.toContain('MM-DD');
     });
 
-    test('generate adr thành công', () => {
-      const tmplDir = path.join(tmpDir, 'docs', 'adrs');
-      fs.mkdirSync(tmplDir, { recursive: true });
-      fs.writeFileSync(path.join(tmplDir, '0000-template.md'), '# Title of the Decision\nDate: {{YEAR}}-MM-DD');
+    test('AC-10: contract không có việc active vào specs/contracts/<slug>.md', () => {
+      write('specs/contracts/_template.md', CONTRACT_TEMPLATE);
 
-      const dest = generate('adr', 'Use Redis', tmpDir);
-      
-      expect(fs.existsSync(dest)).toBe(true);
-      expect(dest.includes('0001-use-redis.md')).toBe(true);
-      
-      const content = fs.readFileSync(dest, 'utf8');
-      expect(content).toContain('# Use Redis');
-      expect(content).toContain('Date: 20'); // Should replace with current year, ex: 2024
-      expect(content).not.toContain('{{YEAR}}');
+      const dest = generate('contract', 'Auth API', {}, tmpDir);
+
+      expect(dest).toBe(path.join(tmpDir, 'specs', 'contracts', 'auth-api.md'));
+      expect(read('specs/contracts/auth-api.md')).toMatch(/^# Contract: Auth API$/m);
     });
 
-    test('generate contract thành công', () => {
-      const tmplDir = path.join(tmpDir, 'specs', 'contracts');
-      fs.mkdirSync(tmplDir, { recursive: true });
-      fs.writeFileSync(path.join(tmplDir, '_template.md'), '# Contract: Name');
+    test('AC-10: --for=<feature> đặt ADR cạnh feature và đánh số riêng trong thư mục đó', () => {
+      write('specs/decisions/0000-template.md', ADR_TEMPLATE);
+      write('specs/decisions/0009-elsewhere.md');
+      write('specs/features/auth/spec.md');
 
-      const dest = generate('contract', 'Auth API', tmpDir);
-      
-      expect(fs.existsSync(dest)).toBe(true);
-      expect(dest.includes('auth-api.md')).toBe(true);
-      
-      const content = fs.readFileSync(dest, 'utf8');
-      expect(content).toContain('# Contract: Auth API');
+      generate('adr', 'Use TOTP', { forFeature: 'auth' }, tmpDir);
+
+      expect(exists('specs/features/auth/decisions/0001-use-totp.md')).toBe(true);
     });
 
-    test('báo lỗi nếu type không hợp lệ', () => {
-      expect(() => generate('unknown', 'Test', tmpDir)).toThrow('Unknown type: unknown');
-    });
-  });
+    test('AC-10: --for với feature không tồn tại thì báo lỗi', () => {
+      write('specs/decisions/0000-template.md', ADR_TEMPLATE);
 
-  describe('generateChangeProposal()', () => {
-    test('tạo change proposal thành công', () => {
-      generateChangeProposal('Add 2FA', null, tmpDir);
-      
-      const changeDir = path.join(tmpDir, 'changes', 'add-2fa');
-      expect(fs.existsSync(changeDir)).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'proposal.md'))).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'delta-specs.md'))).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'tasks.md'))).toBe(true);
+      expect(() => generate('adr', 'X', { forFeature: 'ghost' }, tmpDir)).toThrow('Feature "ghost" not found');
     });
 
-    test('báo lỗi nếu change đã tồn tại', () => {
-      generateChangeProposal('Add 2FA', null, tmpDir);
-      expect(() => generateChangeProposal('Add 2FA', null, tmpDir)).toThrow('Change "add-2fa" already exists');
+    test('AC-10: đang có một việc active thì ADR/contract vào việc đó', () => {
+      write('specs/decisions/0000-template.md', ADR_TEMPLATE);
+      write('specs/contracts/_template.md', CONTRACT_TEMPLATE);
+      write('specs/active/add-2fa/proposal.md');
+
+      generate('adr', 'Use TOTP', {}, tmpDir);
+      generate('contract', 'Otp API', {}, tmpDir);
+
+      expect(exists('specs/active/add-2fa/decisions/0001-use-totp.md')).toBe(true);
+      expect(exists('specs/active/add-2fa/contracts/otp-api.md')).toBe(true);
+      expect(exists('specs/decisions/0001-use-totp.md')).toBe(false);
     });
 
-    test('tạo brownfield change proposal thành công (có target)', () => {
-      const targetSpecDir = path.join(tmpDir, 'specs', 'features', 'login');
-      fs.mkdirSync(targetSpecDir, { recursive: true });
-      const targetFilePath = path.join('specs', 'features', 'login', 'spec.md');
-      fs.writeFileSync(path.join(tmpDir, targetFilePath), '# Spec: User Login\n');
+    test('AC-10: nhiều việc active thì phải chọn bằng work, và --for thắng việc active', () => {
+      write('specs/decisions/0000-template.md', ADR_TEMPLATE);
+      write('specs/active/a/proposal.md');
+      write('specs/active/b/proposal.md');
+      write('specs/features/auth/spec.md');
 
-      generateChangeProposal('Add Apple Login', targetFilePath, tmpDir);
-      
-      const changeDir = path.join(tmpDir, 'changes', 'add-apple-login');
-      expect(fs.existsSync(changeDir)).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'proposal.md'))).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'spec-draft.md'))).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'metadata.json'))).toBe(true);
-      expect(fs.existsSync(path.join(changeDir, 'tasks.md'))).toBe(true);
+      expect(() => generate('adr', 'X', {}, tmpDir)).toThrow(/Multiple active works found \(a, b\)/);
 
-      const metadata = JSON.parse(fs.readFileSync(path.join(changeDir, 'metadata.json'), 'utf8'));
-      expect(metadata.target).toBe(targetFilePath);
-    });
-  });
+      generate('adr', 'For B', { work: 'b' }, tmpDir);
+      expect(exists('specs/active/b/decisions/0001-for-b.md')).toBe(true);
 
-  describe('archiveChange()', () => {
-    test('archive greenfield change thành công', () => {
-      // Setup
-      generateChangeProposal('Add 2FA', null, tmpDir);
-      
-      // Execute
-      archiveChange('Add 2FA', tmpDir);
-      
-      // Verify
-      const archiveDir = path.join(tmpDir, 'archive', 'add-2fa');
-      const baselineSpec = path.join(tmpDir, 'specs', 'features', 'add-2fa', 'spec.md');
-      const changeDir = path.join(tmpDir, 'changes', 'add-2fa');
-      
-      expect(fs.existsSync(archiveDir)).toBe(true);
-      expect(fs.existsSync(baselineSpec)).toBe(true);
-      expect(fs.existsSync(changeDir)).toBe(false);
+      generate('adr', 'For auth', { forFeature: 'auth' }, tmpDir);
+      expect(exists('specs/features/auth/decisions/0001-for-auth.md')).toBe(true);
     });
 
-    test('báo lỗi nếu change không tồn tại', () => {
-      expect(() => archiveChange('Non-existent', tmpDir)).toThrow('Change "non-existent" not found');
-    });
+    test('báo lỗi nếu file đã tồn tại và không ghi đè', () => {
+      write('specs/contracts/_template.md', CONTRACT_TEMPLATE);
+      write('specs/contracts/auth-api.md', 'mine');
 
-    test('archive brownfield change thành công', () => {
-      // Setup Target
-      const targetSpecDir = path.join(tmpDir, 'specs', 'features', 'login');
-      fs.mkdirSync(targetSpecDir, { recursive: true });
-      const targetFilePath = path.join('specs', 'features', 'login', 'spec.md');
-      fs.writeFileSync(path.join(tmpDir, targetFilePath), '# Spec: User Login\n');
-
-      // Propose Brownfield
-      generateChangeProposal('Add Apple Login', targetFilePath, tmpDir);
-
-      // Simulate Dev updating spec-draft.md
-      const draftPath = path.join(tmpDir, 'changes', 'add-apple-login', 'spec-draft.md');
-      fs.writeFileSync(draftPath, '# Spec: User Login\n\n### AC-4: Apple Login\n');
-
-      // Execute
-      archiveChange('Add Apple Login', tmpDir);
-      
-      // Verify
-      const archiveDir = path.join(tmpDir, 'archive', 'add-apple-login');
-      const changeDir = path.join(tmpDir, 'changes', 'add-apple-login');
-      const finalSpecContent = fs.readFileSync(path.join(tmpDir, targetFilePath), 'utf8');
-      
-      expect(fs.existsSync(archiveDir)).toBe(true);
-      expect(fs.existsSync(changeDir)).toBe(false);
-      expect(finalSpecContent).toContain('### AC-4: Apple Login');
+      expect(() => generate('contract', 'Auth API', {}, tmpDir)).toThrow('File already exists');
+      expect(read('specs/contracts/auth-api.md')).toBe('mine');
     });
   });
 
   describe('generateTestsFromSpec()', () => {
-    test('tạo test skeleton từ spec chứa AC', () => {
-      // Setup spec
-      const specDir = path.join(tmpDir, 'specs', 'features', 'login');
-      fs.mkdirSync(specDir, { recursive: true });
-      fs.writeFileSync(path.join(specDir, 'spec.md'), `# Spec: User Login\n\n### AC-1: Valid credentials\n\n### AC-2: Invalid password\n`);
+    test('AC-6: không có việc active thì báo lỗi rõ', () => {
+      expect(() => generateTestsFromSpec(undefined, tmpDir)).toThrow('No active work found');
+    });
 
-      const testFile = generateTestsFromSpec('login', tmpDir);
-      
-      expect(fs.existsSync(testFile)).toBe(true);
-      const content = fs.readFileSync(testFile, 'utf8');
+    test('AC-6: sinh test skeleton từ targets/*.md của việc duy nhất', () => {
+      write('specs/active/login/targets/login.md', '# Spec: User Login\n\n### AC-1: Valid credentials\n\n### AC-2: Invalid password\n');
+
+      const files = generateTestsFromSpec(undefined, tmpDir);
+
+      expect(files).toEqual([path.join(tmpDir, 'tests', 'specs', 'spec-user-login.test.js')]);
+      const content = fs.readFileSync(files[0], 'utf8');
       expect(content).toContain("describe('Spec: User Login'");
       expect(content).toContain("describe('AC-1: Valid credentials'");
       expect(content).toContain("describe('AC-2: Invalid password'");
       expect(content).toContain("test('should satisfy acceptance criteria'");
     });
 
-    test('báo lỗi nếu không tìm thấy spec', () => {
-      expect(() => generateTestsFromSpec('non-existent', tmpDir)).toThrow('Could not find any spec file');
+    test('nhiều target thì mỗi target có AC cho một file test; target không có AC bị bỏ qua', () => {
+      write('specs/active/token/targets/auth.md', '# Spec: Auth\n\n### AC-1: Issue token\n');
+      write('specs/active/token/targets/order.md', '# Spec: Order\n\n### AC-1: Authorize order\n');
+      write('specs/active/token/targets/notes.md', '# Spec: Notes\n\nNo criteria here.\n');
+
+      const files = generateTestsFromSpec('token', tmpDir);
+
+      expect(files.map((f) => path.basename(f))).toEqual(['spec-auth.test.js', 'spec-order.test.js']);
+    });
+
+    test('dùng đuôi .ts khi project có tsconfig.json', () => {
+      write('tsconfig.json', '{}');
+      write('specs/active/login/targets/login.md', '# Spec: Login\n\n### AC-1: Works\n');
+
+      const files = generateTestsFromSpec(undefined, tmpDir);
+
+      expect(files[0]).toMatch(/\.test\.ts$/);
+    });
+
+    test('không ghi đè file test đã có và không tạo file nào khi một file trùng', () => {
+      write('specs/active/token/targets/auth.md', '# Spec: Auth\n\n### AC-1: A\n');
+      write('specs/active/token/targets/order.md', '# Spec: Order\n\n### AC-1: B\n');
+      write('tests/specs/spec-order.test.js', 'mine');
+
+      expect(() => generateTestsFromSpec('token', tmpDir)).toThrow('Test file already exists');
+      expect(exists('tests/specs/spec-auth.test.js')).toBe(false);
+      expect(read('tests/specs/spec-order.test.js')).toBe('mine');
+    });
+
+    test('báo lỗi nếu việc active không có target nào', () => {
+      write('specs/active/empty/proposal.md');
+
+      expect(() => generateTestsFromSpec('empty', tmpDir)).toThrow('No target specs found');
+    });
+
+    test('cảnh báo và trả về rỗng khi không target nào có AC', () => {
+      write('specs/active/login/targets/login.md', '# Spec: Login\n\nNo AC\n');
+
+      expect(generateTestsFromSpec(undefined, tmpDir)).toEqual([]);
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('No Acceptance Criteria'));
     });
   });
 });

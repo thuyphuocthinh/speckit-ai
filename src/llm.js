@@ -24,7 +24,9 @@ function scanProject(targetDir) {
       
       if (stat.isDirectory()) {
         try {
-          const children = fs.readdirSync(itemPath).slice(0, 10); // Giới hạn 10 file đầu tiên để tránh quá lớn
+          const children = fs.readdirSync(itemPath)
+            .filter((name) => !name.startsWith('.')) // Bỏ thư mục ẩn như specs/.history
+            .slice(0, 10); // Giới hạn 10 file đầu tiên để tránh quá lớn
           context.structure.push({ dir: item, children: children });
         } catch {
           context.structure.push({ dir: item });
