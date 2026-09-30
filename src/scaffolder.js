@@ -227,6 +227,7 @@ function formatFrameworkName(fw) {
 
 module.exports = {
   scaffold,
+  readTemplate,
   renderTemplate,
   writeFileIfNotExists,
   buildFileMap,

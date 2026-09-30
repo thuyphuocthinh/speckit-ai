@@ -7,6 +7,7 @@ const hookManager = require('./hook');
 const generator = require('./generator');
 const linter = require('./linter');
 const lifecycle = require('./lifecycle');
+const upgrade = require('./upgrade');
 const done = require('./done');
 const handoff = require('./handoff');
 const reviewer = require('./reviewer');
@@ -24,6 +25,7 @@ Usage:
   npx speckit-ai status [--json]
   npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
   npx speckit-ai generate tests [<name>]
+  npx speckit-ai upgrade [--apply]
   npx speckit-ai lint
   npx speckit-ai handoff [<name>]
   npx speckit-ai review [<name>] [--ref=<filepath>]
@@ -45,6 +47,7 @@ Commands (SDD flow: idea -> start -> done):
   generate adr "<Title>"           New decision record (next to the feature with --for, else the active work, else specs/decisions/)
   generate contract "<Title>"      New API/Data Contract (same placement rules as adr)
   generate tests [<name>]          Generate a test skeleton matching the ACs of the active work
+  upgrade [--apply]                Compare with the current templates: report (or with --apply update) the files speckit-ai manages, save the old ones as .bak
   lint                             Lint spec files and decision records against templates
   handoff [<name>]                 Summarize uncommitted code and append to the active work's tasks.md
   review [<name>] [--ref=<path>]   Review code against the active work's specs and AGENTS.md
@@ -97,6 +100,7 @@ const ALLOWED_FLAGS = {
   handoff: [],
   review: ['ref'],
   serve: [],
+  upgrade: ['apply'],
 };
 
 /** Khoảng cách chỉnh sửa Levenshtein, dùng để gợi ý khi gõ sai tên cờ. */
@@ -218,6 +222,13 @@ async function dispatch(argv, targetDir) {
       );
       return 0;
     }
+
+    case 'upgrade':
+      if (flags.apply !== undefined && flags.apply !== true) {
+        throw new Error('--apply does not take a value');
+      }
+      upgrade.runUpgrade(targetDir, { apply: flags.apply === true });
+      return 0;
 
     case 'lint':
       console.log('[speckit-ai] 🔍 Linting specs...');

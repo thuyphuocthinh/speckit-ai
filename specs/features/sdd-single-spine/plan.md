@@ -15,6 +15,7 @@ Lệch so với plan ban đầu (đã chấp nhận):
 - `generate adr|contract` có thêm `--work=<tên>`; `--for` luôn được ưu tiên hơn việc active.
 - CLI báo lỗi với lệnh không biết thay vì âm thầm scaffold; `--init-hook` dọn hook `commit-msg` cũ của speckit-ai.
 - Sửa `toKebabCase` (mất chữ "đ"), linter bỏ qua heading ví dụ `### AC-n:` trong template, `llm.scanProject` bỏ qua thư mục ẩn (`.history`).
+- Thêm `speckit-ai upgrade [--apply]` (AC-19, `src/upgrade.js`): đường nâng cấp cho project đã dùng bản cũ; thay cho lệnh `doctor` đã bỏ ở đầu plan. Phạm vi: chỉ file do tool sở hữu; file của người dùng chỉ được gợi ý; không di chuyển bố cục cũ.
 - Thêm sau khi rà soát: cờ không hợp lệ bị từ chối kèm gợi ý (AC-18), và `verify-commit` thành cầu nối tạm (cảnh báo, thoát 0) để hook `commit-msg` cũ không chặn commit.
 - Thêm sau khi dùng thử trên project có code sẵn: `start --baseline` (AC-17), viết spec cho code đã tồn tại mà không cần tasks/review; và sửa lỗi `done --force` crash khi thiếu `review.md`.
 

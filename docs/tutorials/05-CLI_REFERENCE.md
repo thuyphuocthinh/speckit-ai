@@ -17,6 +17,7 @@ Every command, flag and message of `speckit-ai` in one place. For the story behi
 | [`done`](#done-name---force) | Check the gates, write the specs, archive the work files |
 | [`generate adr\|contract`](#generate-adrcontract-title---forfeature---workname) | Decision record / contract |
 | [`generate tests`](#generate-tests-name) | Test skeleton from the acceptance criteria |
+| [`upgrade`](#upgrade---apply) | After updating the package: refresh the files speckit-ai manages |
 | [`lint`](#lint) | Check spec structure |
 | [`handoff`](#handoff-name) / [`review`](#review-name---refpath) | AI progress summary / independent code review |
 | [`serve`](#serve) | Browse docs and specs in a browser |
@@ -192,6 +193,28 @@ npx speckit-ai generate tests
 
 Reads the `### AC-n:` headings of every `targets/*.md` of the work and writes one `tests/specs/<slug>.test.js` per spec (`.ts` if the project has a `tsconfig.json`). Nothing is written if one of the files already exists.
 
+## `upgrade [--apply]`
+
+The scaffold never overwrites existing files, so after you move to a newer speckit-ai your `specs/_workflow.md`, templates and skills would stay old. `upgrade` brings them up to date safely.
+
+```bash
+npx speckit-ai upgrade            # report only (dry run): nothing is changed
+npx speckit-ai upgrade --apply    # write the changes
+```
+
+It sorts the files into three groups:
+
+| Group | Files | What `upgrade` does |
+|---|---|---|
+| **Managed by speckit-ai** | `specs/_template.md`, `specs/_workflow.md`, `specs/ideas/_template.md`, `specs/decisions/0000-template.md`, `specs/contracts/_template.md`, `.agents/skills/*/SKILL.md` | Compares each with the current template (your `templatesDir` is respected): `up to date`, `outdated` or `missing`. With `--apply`, outdated files are replaced and the old one is saved as `<file>.bak` (`.bak.1`, `.bak.2` if a backup already exists); missing files are created. Line endings (CRLF/LF) are kept |
+| **Yours** | `.agents/AGENTS.md`, `docs/README.md`, `docs/.../adding-a-new-feature.md` | **Never changed.** Lists the lines of the new templates that mention `speckit-ai` or `specs/` and that your file lacks, so you can add them by hand |
+| **Left over from 1.x** | `specs/features/done/`, `changes/`, `archive/`, `docs/adrs/`, specs in the old format, old git hooks, `requireCommitPrefix` | Only reports each one with advice. **Nothing is moved or deleted** |
+
+- Running it twice is safe: the second run finds everything up to date.
+- If you edited a managed file (for example `_template.md`), `--apply` replaces it, but your version is kept in the `.bak` file.
+- It does not touch `.git/info/exclude`, so a project that tracks its specs keeps doing so.
+- Errors: `Nothing to upgrade: no specs/ or .agents/ found` (run the scaffold first), `--apply does not take a value`.
+
 ## `lint`
 
 Checks **structure only** (this is what the pre-commit hook runs):
@@ -265,7 +288,8 @@ Running the scaffold again is safe, but it never overwrites files, so **old docs
 
 | What you have | What happens with 2.x | What to do |
 |---|---|---|
-| `specs/_workflow.md`, `specs/_template.md`, `.agents/AGENTS.md`, `.agents/skills/*` | Kept as they are (`[skip]`): the agent still reads the old flow | Back up your changes, delete them, run `npx speckit-ai` again to get the new versions |
+| `specs/_workflow.md`, `specs/_template.md`, the other templates in `specs/`, `.agents/skills/*` | Kept as they are by the scaffold (`[skip]`): the agent still reads the old flow | Run `npx speckit-ai upgrade` to see the differences, then `npx speckit-ai upgrade --apply` (old files are saved as `.bak`) |
+| `.agents/AGENTS.md`, `docs/README.md` (yours) | Never changed by the tool | `upgrade` lists the workflow lines the new templates have and yours lack; add them by hand |
 | `specs/features/<slug>/spec.md` in the old format | `lint` fails (missing sections such as `Changelog`); `start --affects` copies them as they are and `done` then requires the new format | Bring the spec to the new template when you next change it, or move old specs to `specs/.history/legacy/` |
 | `specs/features/<slug>/` with `plan.md`, `tasks.md`, `review.md` | Ignored by `lint`; harmless | Delete when convenient |
 | `specs/features/done/<slug>/` | **Invisible**: `--affects=<slug>` says the feature is not found | Move it to `specs/features/<slug>/` (or to `specs/.history/legacy/`) |

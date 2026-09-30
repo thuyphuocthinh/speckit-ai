@@ -27,6 +27,10 @@ npx speckit-ai start "Add 2FA" --affects=auth     # change an existing feature
 npx speckit-ai start "Checkout" --baseline        # write the spec of code that already exists (no tasks/review needed)
 npx speckit-ai done                               # check the gates, write specs/features/<slug>/spec.md
 
+# After updating speckit-ai in a project that already uses it
+npx speckit-ai upgrade            # report what is outdated (changes nothing)
+npx speckit-ai upgrade --apply    # refresh the templates and skills (old ones saved as .bak)
+
 # Decision records and contracts, next to the feature they affect
 npx speckit-ai generate adr "Use TOTP for 2FA" --for=auth
 
@@ -249,6 +253,7 @@ Usage: npx speckit-ai [--mode=<mode>]
        npx speckit-ai status [--json]
        npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
        npx speckit-ai generate tests [<name>]
+       npx speckit-ai upgrade [--apply]
        npx speckit-ai lint
        npx speckit-ai handoff [<name>]
        npx speckit-ai review [<name>] [--ref=<filepath>]
@@ -270,6 +275,7 @@ Commands:
   g, generate adr "<Title>"        New decision record (with --for: next to the feature; else the active work; else specs/decisions/)
   g, generate contract "<Title>"   New API/Data contract (same placement rules)
   g, generate tests [<name>]       Test skeleton matching the ACs of the active work
+  upgrade [--apply]                Compare with the current templates: report (or with --apply update) the files speckit-ai manages, save the old ones as .bak
   lint                             Lint spec files and decision records against templates
   handoff [<name>]                 Summarize uncommitted code and append to the active work's tasks.md
   review [<name>] [--ref=<path>]   Review code against the active work's specs and AGENTS.md

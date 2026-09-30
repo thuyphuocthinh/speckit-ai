@@ -1,6 +1,6 @@
 {
   "name": "speckit-ai",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Scaffold spec-driven AI workspace docs into any project — supports new & existing codebases.",
   "license": "MIT",
   "author": "Thuy Phuoc Thinh <thuyphuocthinh@npm>",

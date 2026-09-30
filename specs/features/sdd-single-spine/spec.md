@@ -117,6 +117,11 @@ Given mỗi lệnh có danh sách cờ hợp lệ riêng
 When gõ một cờ không thuộc lệnh đó, ví dụ `start "X" --afects=auth`
 Then lệnh dừng với exit 1 trước khi tạo hay sửa gì, báo `Unknown option --afects for "start"`, gợi ý cờ gần nhất (`Did you mean --affects?`) khi khoảng cách chỉnh sửa tối đa 2, và liệt kê cờ hợp lệ (hoặc nói lệnh không có cờ nào); `--help` luôn được chấp nhận.
 
+### AC-19: upgrade làm mới các file do tool quản lý
+Given project đã scaffold bằng một bản speckit-ai cũ
+When chạy `speckit-ai upgrade` rồi `speckit-ai upgrade --apply`
+Then mặc định chỉ báo cáo (dry run) và không ghi gì; `--apply` thay các file do tool sở hữu (`specs/_template.md`, `specs/_workflow.md`, template ideas/decisions/contracts, `.agents/skills/*/SKILL.md`) bằng bản template hiện tại (tôn trọng `templatesDir`), lưu bản cũ thành `<file>.bak` (`.bak.1`, `.bak.2` nếu đã có), tạo file còn thiếu và giữ kiểu xuống dòng CRLF/LF; chạy lại thì không ghi thêm; không bao giờ sửa `.agents/AGENTS.md`, `docs/README.md`, `adding-a-new-feature.md` mà chỉ liệt kê các dòng liên quan tới `speckit-ai` hoặc `specs/` mà template mới có còn file thì thiếu; báo cáo (không di chuyển gì) bố cục cũ còn sót (`specs/features/done/`, `changes/`, `archive/`, `docs/adrs/`, spec định dạng cũ, hook `commit-msg`/`pre-commit` cũ, `requireCommitPrefix`); project chưa scaffold thì báo lỗi; `--apply` không nhận giá trị.
+
 ## Technical Constraints
 
 - Không thêm dependency mới; metadata dùng dòng `> **Key**: value` (quy ước của contract template), không YAML front-matter.
