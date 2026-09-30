@@ -50,6 +50,7 @@ specs/
 | `speckit-ai idea "<Title>"` | Save an idea in `specs/ideas/` |
 | `speckit-ai start "<Title or idea>"` | Start a **new feature** in `specs/active/` |
 | `speckit-ai start "<Title>" --affects=a,b` | Start a change to **existing** features `a`, `b` (their specs are copied into `targets/`) |
+| `speckit-ai start "<Title>" --baseline` | Write the spec of code that **already exists** (no new code, so no tasks or review needed at `done`) |
 | `speckit-ai status` | Active works + ideas in dependency order (`> **Depends-on**:` in an idea) |
 | `speckit-ai lint` | Check spec structure (runs in the pre-commit hook) |
 | `speckit-ai generate adr "<Title>"` | New decision record |
@@ -144,6 +145,7 @@ Contracts follow the same rules (`contracts/`). To reference a shared decision o
   - `tasks.md` fully checked and has a Tests phase; `review.md` exists
   - referenced decisions/contracts exist
   - the specs you changed were not modified by someone else since `start` (hash check)
+- A work started with `--baseline` skips the `tasks.md` and `review.md` checks (there is no new code); every check on the spec itself still applies. Its Changelog line says `baseline (từ code hiện có)`.
 - `done --force` skips the bypassable checks and records that in the Changelog. Use it only when you must.
 
 ---

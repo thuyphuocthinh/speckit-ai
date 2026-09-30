@@ -19,7 +19,7 @@ Usage:
   npx speckit-ai [--mode=<mode>]
   npx speckit-ai --init-hook [--force]
   npx speckit-ai idea "<title>"
-  npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>]
+  npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>] [--baseline]
   npx speckit-ai done [<name>] [--force]
   npx speckit-ai status [--json]
   npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
@@ -39,6 +39,7 @@ Options:
 Commands (SDD flow: idea -> start -> done):
   idea "<Title>"                   Save an idea in specs/ideas/ (backlog)
   start "<Title|idea>"             Start a work in specs/active/ (a new feature, or --affects=<a,b> to change existing features)
+  start "<Title>" --baseline       Write the spec of code that already exists (no tasks/review needed at done)
   done [<name>] [--force]          Check gates, write specs to specs/features/, keep work files in specs/.history/
   status [--json]                  Show active works and ideas in dependency order
   generate adr "<Title>"           New decision record (next to the feature with --for, else the active work, else specs/decisions/)
@@ -83,6 +84,58 @@ function valueFlag(flags, name) {
   return value;
 }
 
+/** Các cờ hợp lệ của từng lệnh (không tính --help). '' là lệnh mặc định (scaffold). */
+const ALLOWED_FLAGS = {
+  '': ['mode', 'init-hook', 'force'],
+  idea: [],
+  start: ['affects', 'baseline'],
+  done: ['force'],
+  status: ['json'],
+  generate: ['for', 'work'],
+  g: ['for', 'work'],
+  lint: [],
+  handoff: [],
+  review: ['ref'],
+  serve: [],
+};
+
+/** Khoảng cách chỉnh sửa Levenshtein, dùng để gợi ý khi gõ sai tên cờ. */
+function editDistance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return row[b.length];
+}
+
+/**
+ * Báo lỗi khi gặp cờ không thuộc lệnh (tránh gõ sai như --afects mà không ai biết).
+ */
+function checkFlags(command, flags) {
+  const allowed = ALLOWED_FLAGS[command === undefined ? '' : command];
+  if (!allowed) return; // lệnh không nhận diện được sẽ do nhánh default xử lý
+
+  for (const name of Object.keys(flags)) {
+    if (name === 'help' || allowed.includes(name)) continue;
+
+    const closest = allowed
+      .map((flag) => ({ flag, distance: editDistance(name, flag) }))
+      .sort((a, b) => a.distance - b.distance)[0];
+    const suggestion = closest && closest.distance <= 2 ? ` Did you mean --${closest.flag}?` : '';
+    const valid = allowed.length > 0
+      ? ` Valid options: ${allowed.map((flag) => `--${flag}`).join(', ')}.`
+      : ' This command takes no options.';
+    const where = command === undefined ? 'the default command' : `"${command}"`;
+    throw new Error(`Unknown option --${name} for ${where}.${suggestion}${valid}`);
+  }
+}
+
 /**
  * Chạy một lệnh CLI.
  * @param {string[]} argv - tham số (không gồm node và script)
@@ -109,6 +162,8 @@ async function dispatch(argv, targetDir) {
   const [command, ...rest] = positional;
   const text = rest.join(' ');
 
+  checkFlags(command, flags);
+
   switch (command) {
     case undefined: {
       if (flags['init-hook']) {
@@ -127,7 +182,14 @@ async function dispatch(argv, targetDir) {
       return 0;
 
     case 'start':
-      lifecycle.startWork(text, { affects: parseList(valueFlag(flags, 'affects')) }, targetDir);
+      if (flags.baseline !== undefined && flags.baseline !== true) {
+        throw new Error('--baseline does not take a value');
+      }
+      lifecycle.startWork(
+        text,
+        { affects: parseList(valueFlag(flags, 'affects')), baseline: flags.baseline === true },
+        targetDir
+      );
       return 0;
 
     case 'done':
@@ -187,6 +249,11 @@ async function dispatch(argv, targetDir) {
       ui.printError('REVIEW FAILED! Found the following issues:', result.errors);
       return 1;
     }
+
+    case 'verify-commit':
+      // Cầu nối tạm: hook commit-msg cũ của bản 1.x vẫn gọi lệnh này, không được chặn commit
+      console.error('[speckit-ai] ⚠️  verify-commit was removed in 2.0. Run "npx speckit-ai --init-hook" to remove the old commit-msg hook.');
+      return 0;
 
     default:
       console.error(`[speckit-ai] ❌ Unknown command: ${command}`);

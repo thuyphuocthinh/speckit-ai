@@ -128,10 +128,12 @@ const PROPOSAL_SKELETON = (title) => `# Proposal: ${title}
  * - `input` là tên một ý tưởng trong specs/ideas/ (ý tưởng được chuyển thành proposal) hoặc một tiêu đề mới.
  * - Không có `affects`: tạo feature mới (targets/<tên>.md từ template spec).
  * - Có `affects`: copy spec của các feature đó vào targets/ và ghi sha256 gốc vào work.json.
+ * - `baseline`: chỉ ghi lại hành vi của code đã có (không có code mới), nên không tạo tasks.md và
+ *   `done` bỏ qua cổng tasks/review. Chỉ dùng cho feature mới, không kết hợp với `affects`.
  * Mọi kiểm tra chạy xong trước khi ghi bất cứ thứ gì.
  * @returns {{ name: string, dir: string }}
  */
-function startWork(input, { affects = [] } = {}, targetDir = process.cwd()) {
+function startWork(input, { affects = [], baseline = false } = {}, targetDir = process.cwd()) {
   if (!input) {
     throw new Error('Title is required. Example: speckit-ai start "Add 2FA" --affects=auth');
   }
@@ -159,6 +161,10 @@ function startWork(input, { affects = [] } = {}, targetDir = process.cwd()) {
   let affected = affects.map(toKebabCase).filter(Boolean);
   if (affected.length === 0 && idea) affected = parseList(parseMeta(idea).affects);
   affected = [...new Set(affected)];
+
+  if (baseline && affected.length > 0) {
+    throw new Error('--baseline creates a new feature spec and cannot be combined with --affects (or an idea that lists Affects). Changing an existing feature needs the full flow.');
+  }
 
   const missing = affected.filter((slug) => !fs.existsSync(path.join(paths.features, slug, 'spec.md')));
   if (missing.length > 0) {
@@ -189,12 +195,15 @@ function startWork(input, { affects = [] } = {}, targetDir = process.cwd()) {
   const affectsValue = Object.keys(targets).join(', ');
   const proposalBase = idea ? idea.replace(/^#\s+.+/m, `# Proposal: ${title}`) : PROPOSAL_SKELETON(title);
   const proposal = setMeta(proposalBase, 'Affects', affectsValue);
-  const workJson = { targets: Object.fromEntries(Object.entries(targets).map(([slug, t]) => [slug, t.hash])) };
+  const workJson = {
+    ...(baseline ? { baseline: true } : {}),
+    targets: Object.fromEntries(Object.entries(targets).map(([slug, t]) => [slug, t.hash])),
+  };
 
   try {
     fs.mkdirSync(path.join(workDir, 'targets'), { recursive: true });
     fs.writeFileSync(path.join(workDir, 'proposal.md'), proposal, 'utf8');
-    fs.writeFileSync(path.join(workDir, 'tasks.md'), TASKS_SKELETON(title), 'utf8');
+    if (!baseline) fs.writeFileSync(path.join(workDir, 'tasks.md'), TASKS_SKELETON(title), 'utf8');
     for (const [slug, target] of Object.entries(targets)) {
       fs.writeFileSync(path.join(workDir, 'targets', `${slug}.md`), target.content, 'utf8');
     }
@@ -207,7 +216,11 @@ function startWork(input, { affects = [] } = {}, targetDir = process.cwd()) {
   if (idea) fs.unlinkSync(ideaFile);
 
   console.log(`[speckit-ai] ✅ Started: ${path.relative(targetDir, workDir)}`);
-  console.log(`[speckit-ai] 👉 Edit targets/*.md, then plan → tasks → code → review. Finish with: speckit-ai done`);
+  if (baseline) {
+    console.log('[speckit-ai] 👉 Describe the CURRENT behavior of the code in targets/*.md. Finish with: speckit-ai done');
+  } else {
+    console.log('[speckit-ai] 👉 Edit targets/*.md, then plan → tasks → code → review. Finish with: speckit-ai done');
+  }
   return { name, dir: workDir };
 }
 

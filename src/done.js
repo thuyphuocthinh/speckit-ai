@@ -81,6 +81,7 @@ function proposalSummary(proposal, fallback) {
  * Các loại review được nhắc tới trong review.md (code/test/security/performance).
  */
 function reviewTypes(review) {
+  if (review.trim() === '') return 'none';
   const types = new Set();
   for (const match of review.matchAll(/^#{2,4}\s.*\b(code|test|security|performance)\b/gim)) {
     types.add(match[1].toLowerCase());
@@ -164,6 +165,11 @@ function checkWork(targetDir, name) {
 
   const targetSlugs = Object.keys(work.targets);
   const targetsDir = path.join(dir, 'targets');
+  const isBaseline = work.baseline === true;
+
+  if (isBaseline && targetSlugs.some((slug) => work.targets[slug] !== null)) {
+    errors.push(error('baseline-invalid', 'A baseline work can only create new features, but work.json lists an existing feature as a target.', false));
+  }
 
   for (const slug of targetSlugs) {
     const targetFile = path.join(targetsDir, `${slug}.md`);
@@ -215,8 +221,11 @@ function checkWork(targetDir, name) {
     }
   }
 
+  // Một baseline chỉ ghi lại code đã có: không có task và không có code mới để review
   const tasksFile = path.join(dir, 'tasks.md');
-  if (!fs.existsSync(tasksFile)) {
+  if (isBaseline) {
+    // bỏ qua cổng tasks
+  } else if (!fs.existsSync(tasksFile)) {
     errors.push(error('tasks', 'tasks.md is missing.'));
   } else {
     // Bỏ các phần "Handoff Session" (tóm tắt tự sinh) khỏi việc đếm task
@@ -234,7 +243,7 @@ function checkWork(targetDir, name) {
   }
 
   const reviewFile = path.join(dir, 'review.md');
-  if (!fs.existsSync(reviewFile) || fs.readFileSync(reviewFile, 'utf8').trim() === '') {
+  if (!isBaseline && (!fs.existsSync(reviewFile) || fs.readFileSync(reviewFile, 'utf8').trim() === '')) {
     errors.push(error('review', 'review.md is missing or empty.'));
   }
 
@@ -278,7 +287,9 @@ function finishWork(targetDir, { name, force = false } = {}) {
   const proposalFile = path.join(dir, 'proposal.md');
   const proposal = fs.existsSync(proposalFile) ? fs.readFileSync(proposalFile, 'utf8') : '';
   const summary = proposalSummary(proposal, workName);
-  const review = fs.readFileSync(path.join(dir, 'review.md'), 'utf8');
+  const reviewFile = path.join(dir, 'review.md');
+  const review = fs.existsSync(reviewFile) ? fs.readFileSync(reviewFile, 'utf8') : '';
+  const outcome = work.baseline === true ? 'baseline (từ code hiện có)' : `review: ${reviewTypes(review)}`;
 
   let historyName = `${date}-${workName}`;
   for (let n = 2; fs.existsSync(path.join(paths.history, historyName)); n++) {
@@ -287,7 +298,7 @@ function finishWork(targetDir, { name, force = false } = {}) {
   const historyDir = path.join(paths.history, historyName);
 
   const forced = force && skipped.length > 0 ? ` · forced: ${skipped.join(', ')}` : '';
-  const changelogLine = `- ${date} · ${workName} · ${summary} · review: ${reviewTypes(review)}${forced} · chi tiết: .history/${historyName}`;
+  const changelogLine = `- ${date} · ${workName} · ${summary} · ${outcome}${forced} · chi tiết: .history/${historyName}`;
 
   const specWrites = targetSlugs.map((slug) => ({
     dest: path.join(paths.features, slug, 'spec.md'),

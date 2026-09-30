@@ -399,6 +399,75 @@ describe('done.js', () => {
     });
   });
 
+  describe('baseline (chỉ ghi lại hiện trạng của code)', () => {
+    /** Tạo một việc baseline: không có tasks.md và review.md. */
+    function setupBaseline(name = 'checkout', content = VALID_SPEC) {
+      write(`specs/active/${name}/targets/${name}.md`, content);
+      write(`specs/active/${name}/work.json`, JSON.stringify({ baseline: true, targets: { [name]: null } }));
+      write(`specs/active/${name}/proposal.md`, '# Proposal: Checkout\n\n## Why\n\nDocument what the code does today.\n');
+    }
+
+    test('AC-17: qua cổng mà không cần tasks.md và review.md', () => {
+      setupBaseline();
+
+      expect(checkWork(tmpDir).errors).toEqual([]);
+    });
+
+    test('AC-17: done ghi spec, Changelog ghi baseline thay cho review, work vào .history', () => {
+      setupBaseline();
+
+      finishWork(tmpDir);
+
+      const spec = read('specs/features/checkout/spec.md');
+      expect(spec).toContain(
+        `- ${today} · checkout · Document what the code does today. · baseline (từ code hiện có) · chi tiết: .history/${today}-checkout`
+      );
+      expect(spec).not.toContain('review:');
+      expect(exists(`specs/.history/${today}-checkout/work.json`)).toBe(true);
+      expect(exists('specs/active/checkout')).toBe(false);
+    });
+
+    test('AC-17: vẫn chặn bằng các cổng về chất lượng spec', () => {
+      const bad = VALID_SPEC
+        .replace('- [x] Partial', '- [ ] Partial')
+        .replace('### AC-1: Refund works', '- [ ] Refund works')
+        .replace('Customers can refund an order.', '<Brief description>');
+      setupBaseline('checkout', bad);
+
+      expect(codes()).toEqual(['open-questions', 'ac-format', 'placeholders']);
+    });
+
+    test('AC-17: baseline mà work.json liệt kê feature có sẵn thì bị chặn và không cho --force', () => {
+      setupBaseline();
+      write('specs/active/checkout/work.json', JSON.stringify({ baseline: true, targets: { checkout: 'abc123' } }));
+      write('specs/features/checkout/spec.md', 'exists');
+
+      const { errors } = checkWork(tmpDir);
+
+      expect(errors.map((e) => e.code)).toContain('baseline-invalid');
+      expect(errors.find((e) => e.code === 'baseline-invalid').forceable).toBe(false);
+      expect(() => finishWork(tmpDir, { force: true })).toThrow(/can only create new features/);
+    });
+
+    test('việc không phải baseline vẫn đòi tasks.md và review.md', () => {
+      setupWork('refund');
+      fs.unlinkSync(path.join(tmpDir, 'specs/active/refund/tasks.md'));
+      fs.unlinkSync(path.join(tmpDir, 'specs/active/refund/review.md'));
+
+      expect(codes()).toEqual(['tasks', 'review']);
+    });
+
+    test('--force khi thiếu review.md không bị crash và Changelog ghi review: none', () => {
+      setupWork('refund');
+      fs.unlinkSync(path.join(tmpDir, 'specs/active/refund/review.md'));
+
+      const res = finishWork(tmpDir, { force: true });
+
+      expect(res.skipped).toEqual(['review']);
+      expect(read('specs/features/refund/spec.md')).toContain('review: none · forced: review');
+    });
+  });
+
   describe('finishWork() - ADR và contract', () => {
     test('AC-10: việc một target chuyển ADR vào feature và đánh số lại theo thư mục đích', () => {
       setupWork('refund');

@@ -30,6 +30,7 @@ This creates `specs/ideas/user-registration-flow.md`. Fill in the Problem and Ro
 [speckit-ai] Ideas (2), in dependency order:
   1. auth
   2. user-registration-flow  (blocked by: auth)
+[speckit-ai] Features done (0):
 ```
 
 An idea stays "blocked" until the feature it depends on is finished (exists in `specs/features/`).

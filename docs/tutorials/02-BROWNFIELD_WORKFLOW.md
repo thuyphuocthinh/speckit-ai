@@ -4,6 +4,10 @@ In real projects you spend more time changing existing features than creating ne
 
 The same `start` / `done` flow handles it. You just say which features the work changes.
 
+> **The feature has no spec yet?** `--affects` needs `specs/features/<slug>/spec.md`. For code that already exists, write that spec first, once:
+> `npx speckit-ai start "Checkout" --baseline` → describe the **current** behavior in `targets/checkout.md` → `npx speckit-ai done`.
+> A baseline has no tasks and no review (there is no new code). After that, everything below works.
+
 ## Step 1: Start with `--affects`
 
 ```bash

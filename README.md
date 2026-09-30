@@ -24,6 +24,7 @@ npx speckit-ai --init-hook
 npx speckit-ai idea "Order refund"                # save an idea for later
 npx speckit-ai start "Order refund"               # start a new feature
 npx speckit-ai start "Add 2FA" --affects=auth     # change an existing feature
+npx speckit-ai start "Checkout" --baseline        # write the spec of code that already exists (no tasks/review needed)
 npx speckit-ai done                               # check the gates, write specs/features/<slug>/spec.md
 
 # Decision records and contracts, next to the feature they affect
@@ -112,6 +113,7 @@ speckit-ai done                     → specs/features/order-refund/spec.md  (wo
 ```
 
 - **Changing existing features:** `speckit-ai start "Add 2FA" --affects=auth,order` copies those specs into `targets/`. At `done`, each spec is replaced only if nobody changed it since `start`.
+- **Existing code without specs:** `speckit-ai start "Checkout" --baseline` writes the spec of what the code does today; `done` then skips the tasks and review checks because there is no new code.
 - **Several works at once** are allowed (for example a bug fix while a feature is in progress): pass the work name to `done`, `handoff`, `review`, `generate tests`.
 - **Hotfixes** rarely need `start` — see `specs/_workflow.md` ("Bugs and hotfixes").
 
@@ -139,6 +141,7 @@ Want to learn how to use Speckit AI in a real-world Agile team? Check out our st
 2. [Changing Existing Features, decisions and hotfixes](./docs/tutorials/02-BROWNFIELD_WORKFLOW.md)
 3. [Git Hook and local-only specs](./docs/tutorials/03-GIT_HOOK.md)
 4. [AI Handoff & Review (Solving AI Context Limits & Bias)](./docs/tutorials/04-HANDOFF_AND_REVIEW.md)
+5. [CLI Reference (every command, flag and message) and adopting speckit-ai in an existing project](./docs/tutorials/05-CLI_REFERENCE.md)
 
 ---
 
@@ -241,7 +244,7 @@ Once scaffolded, your AI agent can run the full **Spec-Driven Development** cycl
 Usage: npx speckit-ai [--mode=<mode>]
        npx speckit-ai --init-hook [--force]
        npx speckit-ai idea "<title>"
-       npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>]
+       npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>] [--baseline]
        npx speckit-ai done [<name>] [--force]
        npx speckit-ai status [--json]
        npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
@@ -261,6 +264,7 @@ Options:
 Commands:
   idea "<Title>"                   Save an idea in specs/ideas/ (backlog)
   start "<Title|idea>"             Start a work in specs/active/ (new feature, or --affects=<a,b> to change existing features)
+  start "<Title>" --baseline       Write the spec of code that already exists (no tasks/review needed at done)
   done [<name>] [--force]          Check gates, write specs to specs/features/, keep work files in specs/.history/
   status [--json]                  Show active works and ideas in dependency order
   g, generate adr "<Title>"        New decision record (with --for: next to the feature; else the active work; else specs/decisions/)

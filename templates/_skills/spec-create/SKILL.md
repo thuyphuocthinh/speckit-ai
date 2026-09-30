@@ -52,9 +52,12 @@ Classify the feature based on the description:
 ```
 npx speckit-ai start "<title>"                          # a new feature (or the name of an idea)
 npx speckit-ai start "<title>" --affects=auth,order     # change existing features
+npx speckit-ai start "<title>" --baseline               # write the spec of code that already exists
 ```
 
 This creates `specs/active/<name>/` with `proposal.md`, `tasks.md` and `targets/`. For existing features, `targets/` holds a copy of each spec to edit. Never edit `specs/features/*/spec.md` directly for a real change.
+
+Use `--baseline` when the code already exists and the user only wants its spec: read the code, describe its **current** behavior in `targets/<feature>.md` (no tasks, plan or review are needed), then run `done`. `--baseline` cannot be combined with `--affects`.
 
 ### Step 4 — Write the spec in `targets/<feature>.md`
 

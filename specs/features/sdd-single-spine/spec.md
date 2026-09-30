@@ -80,7 +80,7 @@ Then ADR được đánh số tăng đúng trong thư mục đích; `docs/adrs/`
 ### AC-11: bỏ tính năng commit prefix
 Given các lệnh và hook
 When xem `--help`, `--init-hook` và mã nguồn
-Then không còn `verify-commit`, hook `commit-msg`, `requireCommitPrefix` và regex `UC-`/`BR-`; `--init-hook` chỉ cài `pre-commit`; tutorial 3 chỉ còn phần hook.
+Then không còn hook `commit-msg`, `requireCommitPrefix` và regex `UC-`/`BR-`; `--init-hook` chỉ cài `pre-commit` và xóa hook `commit-msg` cũ của speckit-ai; tutorial 3 chỉ còn phần hook. Riêng `verify-commit` chỉ còn là cầu nối tạm: in cảnh báo và thoát 0, để hook `commit-msg` cũ chưa được dọn không chặn commit.
 
 ### AC-12: hook pre-commit an toàn với project local-only
 Given `specs/` và `docs/` bị `.git/info/exclude`
@@ -106,6 +106,16 @@ Then có quy tắc: vặt (chỉ commit); code sai so với spec (sửa + test h
 Given CLI hiện tại
 When chạy bất kỳ lệnh nào
 Then (a) không in dòng nhiễu của dotenv và chỉ nạp `.env` cho `--mode=auto`, `review`, `handoff` (dùng `quiet: true`); (b) mọi log dùng tiền tố `[speckit-ai]`, và `AGENTS.md`, `coding-conventions.md`, `structure.md` không còn tên `create-ai-docs` hoặc `promptFiller.js`; (c) `--mode=auto` thất bại thì thông báo đúng hành vi (thoát, không "fallback"); (d) stealth cũng exclude `.speckitrc` và `speckit.config.json`; (e) `bin/index.js` chỉ parse args và gọi module trong `src/`.
+
+### AC-17: baseline cho code đã có, không cần tasks và review
+Given code đã tồn tại nhưng chưa có spec
+When chạy `speckit-ai start "<Title>" --baseline`, viết `targets/<slug>.md` mô tả hành vi hiện tại, rồi `done`
+Then `start` không tạo `tasks.md` và ghi `baseline: true` trong `work.json`; `done` bỏ qua cổng tasks và review nhưng vẫn kiểm mọi cổng của chính spec (open questions, `### AC-n:`, placeholder, tham chiếu); Changelog ghi `baseline (từ code hiện có)` thay cho phần review; `--baseline` không kết hợp được với `--affects` (kể cả `Affects` của ý tưởng) và không nhận giá trị; work có `baseline` mà liệt kê feature đã tồn tại bị chặn và không cho `--force`. Ngoài ra `done --force` khi thiếu `review.md` không được crash (Changelog ghi `review: none`).
+
+### AC-18: cờ không hợp lệ bị từ chối
+Given mỗi lệnh có danh sách cờ hợp lệ riêng
+When gõ một cờ không thuộc lệnh đó, ví dụ `start "X" --afects=auth`
+Then lệnh dừng với exit 1 trước khi tạo hay sửa gì, báo `Unknown option --afects for "start"`, gợi ý cờ gần nhất (`Did you mean --affects?`) khi khoảng cách chỉnh sửa tối đa 2, và liệt kê cờ hợp lệ (hoặc nói lệnh không có cờ nào); `--help` luôn được chấp nhận.
 
 ## Technical Constraints
 

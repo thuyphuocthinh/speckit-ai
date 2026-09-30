@@ -161,6 +161,49 @@ describe('lifecycle.js', () => {
       expect(() => startWork('Feature A', {}, tmpDir)).toThrow(/Active work already exists: feature-a/);
     });
 
+    test('AC-17: --baseline tạo feature mới không có tasks.md và đánh dấu baseline trong work.json', () => {
+      setupProject();
+
+      startWork('Checkout', { baseline: true }, tmpDir);
+
+      const base = 'specs/active/checkout';
+      expect(exists(`${base}/tasks.md`)).toBe(false);
+      expect(exists(`${base}/proposal.md`)).toBe(true);
+      expect(read(`${base}/targets/checkout.md`)).toMatch(/^# Spec: Checkout$/m);
+      expect(JSON.parse(read(`${base}/work.json`))).toEqual({ baseline: true, targets: { checkout: null } });
+      const printed = console.log.mock.calls.map((c) => c[0]).join('\n');
+      expect(printed).toContain('Describe the CURRENT behavior');
+    });
+
+    test('AC-17: không có --baseline thì work.json không có khóa baseline và vẫn có tasks.md', () => {
+      setupProject();
+
+      startWork('Checkout', {}, tmpDir);
+
+      expect(JSON.parse(read('specs/active/checkout/work.json'))).toEqual({ targets: { checkout: null } });
+      expect(exists('specs/active/checkout/tasks.md')).toBe(true);
+    });
+
+    test('AC-17: --baseline không được kết hợp với --affects và không tạo gì', () => {
+      setupProject();
+      write('specs/features/auth/spec.md', '# Spec: Auth\n');
+
+      expect(() => startWork('Doc', { baseline: true, affects: ['auth'] }, tmpDir)).toThrow(/--baseline .* cannot be combined with --affects/);
+
+      expect(exists('specs/active')).toBe(false);
+    });
+
+    test('AC-17: --baseline bị từ chối khi ý tưởng có Affects, ý tưởng được giữ nguyên', () => {
+      setupProject();
+      write('specs/features/auth/spec.md', '# Spec: Auth\n');
+      write('specs/ideas/add-2fa.md', '# Idea: Add 2FA\n\n> **Affects**: auth\n');
+
+      expect(() => startWork('add-2fa', { baseline: true }, tmpDir)).toThrow(/cannot be combined with --affects/);
+
+      expect(exists('specs/active')).toBe(false);
+      expect(exists('specs/ideas/add-2fa.md')).toBe(true);
+    });
+
     test('từ chối tạo feature mới trùng tên feature đã có và gợi ý --affects', () => {
       setupProject();
       write('specs/features/auth/spec.md', '# Spec: Auth\n');
