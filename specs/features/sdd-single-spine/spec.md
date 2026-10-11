@@ -6,7 +6,7 @@ Viết lại flow của speckit-ai thành một mô hình đơn giản, trạng 
 
 - `specs/ideas/` — backlog, mỗi ý tưởng một file nhỏ.
 - `specs/active/<tên>/` — việc đang làm (thường một, có thể nhiều khi có việc chen ngang): proposal, plan, tasks, review và bản nháp spec của mọi feature bị đụng tới (`targets/`). Một cơ chế cho feature mới, sửa feature cũ và sửa nhiều feature.
-- `specs/features/<slug>/` — đã xong: chỉ còn `spec.md` (có `## Changelog`), `decisions/` và `contracts/`.
+- `specs/features/<slug>/` — đã xong: chỉ còn `spec.md` (có `## Changelog`), `decisions/`, `contracts/` và `lessons.md` (bài học rút ra sau mỗi lần làm, xem AC-21).
 - `specs/.history/<ngày>-<tên>/` — nơi cất toàn bộ file làm việc của một việc đã `done` (proposal, plan, tasks, review...), ẩn khỏi agent, xóa bằng tay khi muốn.
 - ADR và contract nằm cạnh feature bị ảnh hưởng (`decisions/`, `contracts/`); loại xuyên feature nằm ở `specs/decisions/`, `specs/contracts/`. `docs/` chỉ còn tổng quan project.
 
@@ -59,7 +59,7 @@ Then `handoff` ghi vào `tasks.md` của việc được chọn; `generate tests
 
 ### AC-7: done kiểm tra chặt trước khi ghi
 Given một việc active
-When chạy `done` mà còn `- [ ]` dưới Open Questions, AC không theo dạng `### AC-n:`, còn placeholder `<...>`, tasks chưa tick, thiếu `review.md`, tasks thiếu phase Tests, hoặc `Decisions`/`Contracts` tham chiếu file không tồn tại
+When chạy `done` mà còn `- [ ]` dưới Open Questions, AC không theo dạng `### AC-n:`, còn placeholder `<...>`, tasks chưa tick, thiếu `review.md`, `review.md` không nhắc tới các `AC-n` mới hoặc đã đổi (xem AC-20), tasks thiếu phase Tests, hoặc `Decisions`/`Contracts` tham chiếu file không tồn tại
 Then dừng exit 1, liệt kê mọi lý do, không ghi/xóa gì; `--force` bỏ qua và ghi vào Changelog rằng đã bỏ qua. `--force` không bỏ qua được: `work.json` hoặc file target bị thiếu, feature mới mà `specs/features/<slug>/spec.md` đã tồn tại, và contract trùng tên file ở nơi đến.
 
 ### AC-8: done đóng gói an toàn
@@ -70,7 +70,7 @@ Then với mỗi target có spec gốc: chỉ thay khi sha256 hiện tại bằn
 ### AC-9: done cất việc vào .history thay vì xóa
 Given đóng gói xong
 When `done` kết thúc
-Then `decisions/` và `contracts/` của việc được chuyển đi trước (xem AC-10), rồi thư mục `specs/active/<tên>/` được **đổi tên** thành `specs/.history/<ngày>-<tên>/` (giữ nguyên proposal, plan, tasks, review, targets, work.json); không có lệnh hay cơ chế tự dọn `.history/`, bạn xóa bằng tay khi muốn. `proposal.md` ghi rõ `Affects` để từ `.history/` truy được về các feature. `lint`, `serve`, `status` và quét dự án của LLM đều bỏ qua `.history/`; `_workflow.md` dặn agent không đọc nó.
+Then `decisions/` và `contracts/` của việc được chuyển đi trước (xem AC-10) và phần Lessons Learned của `review.md` được lưu vào feature (xem AC-21), rồi thư mục `specs/active/<tên>/` được **đổi tên** thành `specs/.history/<ngày>-<tên>/` (giữ nguyên proposal, plan, tasks, review, targets, work.json); không có lệnh hay cơ chế tự dọn `.history/`, bạn xóa bằng tay khi muốn. `proposal.md` ghi rõ `Affects` để từ `.history/` truy được về các feature. `lint`, `serve`, `status` và quét dự án của LLM đều bỏ qua `.history/`; `_workflow.md` dặn agent không đọc nó.
 
 ### AC-10: ADR và contract nằm đúng chỗ
 Given `generate adr "..."` hoặc `generate contract "..."`
@@ -122,6 +122,21 @@ Given project đã scaffold bằng một bản speckit-ai cũ
 When chạy `speckit-ai upgrade` rồi `speckit-ai upgrade --apply`
 Then mặc định chỉ báo cáo (dry run) và không ghi gì; `--apply` thay các file do tool sở hữu (`specs/_template.md`, `specs/_workflow.md`, template ideas/decisions/contracts, `.agents/skills/*/SKILL.md`) bằng bản template hiện tại (tôn trọng `templatesDir`), lưu bản cũ thành `<file>.bak` (`.bak.1`, `.bak.2` nếu đã có), tạo file còn thiếu và giữ kiểu xuống dòng CRLF/LF; chạy lại thì không ghi thêm; không bao giờ sửa `.agents/AGENTS.md`, `docs/README.md`, `adding-a-new-feature.md` mà chỉ liệt kê các dòng liên quan tới `speckit-ai` hoặc `specs/` mà template mới có còn file thì thiếu; báo cáo (không di chuyển gì) bố cục cũ còn sót (`specs/features/done/`, `changes/`, `archive/`, `docs/adrs/`, spec định dạng cũ, hook `commit-msg`/`pre-commit` cũ, `requireCommitPrefix`); project chưa scaffold thì báo lỗi; `--apply` không nhận giá trị.
 
+### AC-20: review.md phải đối chiếu các AC mới hoặc đã đổi
+Given một việc không phải baseline, có `review.md` không rỗng, và các `targets/*.md` có các tiêu chí `### AC-n:`
+When chạy `done`
+Then các `AC-n` cần có mặt trong `review.md` (dưới dạng `AC-n`, không phân biệt hoa thường; `AC-1` không được thỏa bởi `AC-10`) gồm: mọi `AC-n` của target là feature mới; với target sửa feature có sẵn thì chỉ các `AC-n` mới hoặc có nội dung khác so với `specs/features/<slug>/spec.md` hiện tại (nội dung so sau khi bỏ khác biệt kiểu xuống dòng và khoảng trắng đầu/cuối). Còn thiếu thì dừng exit 1 với thông báo liệt kê các `AC-n` còn thiếu, không ghi gì. Cổng này bỏ qua được bằng `--force` (Changelog ghi `forced: review-ac`), không áp dụng cho việc `--baseline`, và không báo thêm khi `review.md` thiếu hoặc rỗng (đã có lỗi riêng) hoặc khi không có AC nào cần nhắc. Mục đích là chặn việc bỏ sót AC khi tự review, không kiểm tra Pass hay Fail.
+
+### AC-21: done lưu Lessons Learned vào feature
+Given một việc không phải baseline mà `review.md` có một heading cấp 2 đến 4 chứa "Lessons Learned" (không phân biệt hoa thường) và có nội dung bên dưới
+When `done` thành công
+Then với mỗi target, nội dung dưới heading đó (đến heading cùng cấp hoặc cao hơn kế tiếp) được thêm vào cuối `specs/features/<slug>/lessons.md` dưới một heading `## <ngày> · <tên việc>`; file được tạo (kèm tiêu đề và một dòng giải thích) nếu chưa có, các mục cũ giữ nguyên, kiểu xuống dòng (CRLF/LF) của file có sẵn được giữ; `done` in đường dẫn file. Không ghi gì khi không có heading, nội dung rỗng, hoặc chỉ là "None", "N/A", "Không có", "-". Việc baseline không có `review.md` nên không sinh bài học. `lessons.md` không bị `lint` kiểm cấu trúc. Mọi kiểm tra vẫn xong trước khi ghi, nên `done` thất bại thì không có `lessons.md` nào được tạo.
+
+### AC-22: start --affects nhắc đọc bài học của feature
+Given feature `auth` có `specs/features/auth/lessons.md`
+When chạy `speckit-ai start "Add 2FA" --affects=auth`
+Then sau khi tạo việc, in một dòng cho mỗi feature bị ảnh hưởng có `lessons.md`, nêu đường dẫn và dặn đọc trước khi sửa spec; feature không có `lessons.md`, và việc tạo feature mới, không in thêm gì. `_workflow.md` và các skill `spec-create`, `spec-plan` dặn agent đọc file này khi sửa feature có sẵn.
+
 ## Technical Constraints
 
 - Không thêm dependency mới; metadata dùng dòng `> **Key**: value` (quy ước của contract template), không YAML front-matter.
@@ -137,6 +152,7 @@ Then mặc định chỉ báo cáo (dry run) và không ghi gì; `--apply` thay 
 - Tham chiếu chéo spec giữa ecom-api và ecom-ui.
 - Sửa hành vi của `serve`, `review`, `handoff` ngoài việc chúng dùng cơ chế tìm việc active mới; refactor `src/llm.js` (khóa API riêng, model ID cứng).
 - Công cụ tự chuyển project cũ (làm tay).
+- Tự giới hạn kích thước hay tóm gọn `lessons.md` khi nó dài ra.
 
 ## Open Questions
 
@@ -145,3 +161,5 @@ Không còn câu hỏi mở.
 ## Changelog
 
 <!-- Lines are appended by `speckit-ai done`. -->
+- 2026-10-11 · done-review-covers-ac · Cổng review của done chỉ kiểm review.md tồn tại và không rỗng, nên một dòng chữ bất kỳ cũng qua được. Review tự thực ... · review: code, test · chi tiết: .history/2026-10-11-done-review-covers-ac
+- 2026-10-11 · lessons-loop · Mỗi lần làm xong, review.md có mục Lessons Learned, nhưng done cất cả thư mục việc vào specs/.history/, nơi agent đượ... · review: code, test · chi tiết: .history/2026-10-11-lessons-loop
