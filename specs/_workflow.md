@@ -58,6 +58,7 @@ specs/
 | `speckit-ai generate contract "<Title>"` | New API/data contract |
 | `speckit-ai generate tests` | Test skeleton from the `### AC-n:` headings of the active work |
 | `speckit-ai done` | Run the gates, write specs to `specs/features/`, save the Lessons Learned of `review.md` in each feature's `lessons.md`, archive the work files |
+| `speckit-ai done --check` | Run the same gates and report what is missing; writes nothing |
 
 With several active works, pass the work name (`done <name>`, `generate adr "<Title>" --work=<name>`).
 
@@ -159,7 +160,7 @@ A bug fix never needs `start` unless it is a real change to a spec.
 |---|---|
 | Trivial (typo, null check, < 30 min) | Fix + commit message only |
 | Code is wrong, spec is right | Fix the code, add a regression test for the relevant `AC-n`, commit `fix(<feature>): ...` |
-| Spec is wrong or missing something, and it is urgent | Edit `specs/features/<slug>/spec.md` directly, add a line to its `## Changelog`, add a test |
+| Spec is wrong or missing something, and it is urgent | Edit `specs/features/<slug>/spec.md` directly, add one line to its `## Changelog` (`- <date> · hotfix · <what and why>`), add a test |
 | Large fix that needs a plan (or touches several features) | Treat it as a normal work: `start "<Title>" --affects=<features>` |
 
 If an active work also targets the feature you edited directly, `done` will report the hash mismatch:
@@ -171,10 +172,10 @@ merge your change into that work's `targets/<feature>.md`, then `done --force`.
 
 - Do not implement if a target spec has unresolved open questions
 - Before changing an existing feature (`--affects`), read `specs/features/<slug>/lessons.md` if it exists (`start` prints its path)
-- Do not report done without a `review.md`, and run `npx speckit-ai done` (it is the source of truth for "done")
+- Do not report done without a `review.md`, and run `npx speckit-ai done` (it is the source of truth for "done"). `npx speckit-ai done --check` shows the gates without finishing the work
 - Run `npx speckit-ai lint` before reporting a spec change as finished
 - Never read or edit `specs/.history/` — it holds old work files that may contradict the current specs
-- Never edit the `## Changelog` by hand; `done` writes it
+- Never edit the `## Changelog` by hand; `done` writes it. The one exception is the single `hotfix` line you add when you fix a spec directly (see "Bugs and hotfixes")
 - Small bugfixes don't need a spec — a clear commit message is sufficient
 
 ---

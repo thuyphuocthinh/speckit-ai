@@ -10,6 +10,8 @@ const {
   setMeta,
   parseList,
   sha256,
+  extractAcBlocks,
+  omitUnchangedAcs,
   listActive,
   resolveActive,
   listFeatures,
@@ -108,6 +110,79 @@ describe('features.js', () => {
       expect(sha256(a)).toBe(sha256(b));
       expect(sha256(a)).not.toBe(sha256(c));
       expect(sha256(a)).toMatch(/^[0-9a-f]{64}$/);
+    });
+  });
+
+  describe('extractAcBlocks() / omitUnchangedAcs()', () => {
+    const SPEC = [
+      '# Spec: Auth',
+      '',
+      '## Overview',
+      '',
+      'Sign in.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '### AC-1: Sign in',
+      'Given a user',
+      'When they sign in',
+      'Then they get a token',
+      '',
+      '### AC-2: Sign out',
+      'Given a session',
+      'When they sign out',
+      'Then the token is revoked',
+      '',
+      '## Technical Constraints',
+      '',
+      '- Use JWT',
+      '',
+    ].join('\n');
+
+    test('extractAcBlocks: số AC -> nội dung, dừng ở heading cấp 2 kế tiếp', () => {
+      const blocks = extractAcBlocks(SPEC);
+
+      expect([...blocks.keys()]).toEqual([1, 2]);
+      expect(blocks.get(2)).toBe('### AC-2: Sign out\nGiven a session\nWhen they sign out\nThen the token is revoked');
+      expect(blocks.get(2)).not.toContain('Technical Constraints');
+    });
+
+    test('extractAcBlocks: không phân biệt kiểu xuống dòng và khoảng trắng đầu/cuối', () => {
+      const crlf = SPEC.replace(/\n/g, '\r\n');
+
+      expect(extractAcBlocks(crlf)).toEqual(extractAcBlocks(SPEC));
+    });
+
+    test('omitUnchangedAcs: AC không đổi chỉ còn dòng tiêu đề, phần khác của spec giữ nguyên', () => {
+      const edited = SPEC.replace('Then the token is revoked', 'Then the token is revoked within 1s');
+
+      const result = omitUnchangedAcs(edited, SPEC);
+
+      expect(result).toContain('### AC-1: Sign in (unchanged, omitted)');
+      expect(result).not.toContain('When they sign in');
+      expect(result).toContain('Then the token is revoked within 1s'); // AC-2 đã đổi: giữ nguyên
+      expect(result).toContain('## Overview\n\nSign in.');
+      expect(result).toContain('## Technical Constraints\n\n- Use JWT');
+    });
+
+    test('omitUnchangedAcs: AC mới được giữ nguyên, và AC cuối không đổi vẫn giữ phần sau nó', () => {
+      const added = SPEC.replace('## Technical Constraints', '### AC-3: Refresh\nGiven x\nWhen y\nThen z\n\n## Technical Constraints');
+
+      const result = omitUnchangedAcs(added, SPEC);
+
+      expect(result).toContain('### AC-1: Sign in (unchanged, omitted)');
+      expect(result).toContain('### AC-2: Sign out (unchanged, omitted)');
+      expect(result).toContain('### AC-3: Refresh\nGiven x\nWhen y\nThen z');
+      expect(result).toContain('## Technical Constraints\n\n- Use JWT');
+    });
+
+    test('omitUnchangedAcs: không đổi gì thì mọi AC đều bị rút gọn; bản gốc không có AC thì giữ nguyên', () => {
+      expect(omitUnchangedAcs(SPEC, SPEC)).not.toContain('Given a user');
+      expect(omitUnchangedAcs(SPEC, '# Spec: Old\n')).toBe(SPEC);
+    });
+
+    test('omitUnchangedAcs: khác biệt CRLF không bị coi là đã đổi', () => {
+      expect(omitUnchangedAcs(SPEC, SPEC.replace(/\n/g, '\r\n'))).toContain('### AC-1: Sign in (unchanged, omitted)');
     });
   });
 

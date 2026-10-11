@@ -48,64 +48,143 @@ function scanProject(targetDir) {
   return context;
 }
 
+const DEFAULT_TIMEOUT_MS = 60000;
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+/** Lỗi nhất thời: đáng thử lại (giới hạn tốc độ, lỗi phía server). */
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+
+/** Các hãng LLM, theo thứ tự ưu tiên khi có nhiều khóa API. */
+const PROVIDERS = {
+  gemini: { label: 'Gemini', keyEnv: 'GEMINI_API_KEY', modelEnv: 'SPECKIT_GEMINI_MODEL', defaultModel: 'gemini-1.5-flash' },
+  claude: { label: 'Claude', keyEnv: 'ANTHROPIC_API_KEY', modelEnv: 'SPECKIT_ANTHROPIC_MODEL', defaultModel: 'claude-sonnet-5-5' },
+  openai: { label: 'OpenAI', keyEnv: 'OPENAI_API_KEY', modelEnv: 'SPECKIT_OPENAI_MODEL', defaultModel: 'gpt-4o-mini' },
+};
+
+/**
+ * Chọn hãng trước (theo thứ tự ưu tiên trong PROVIDERS) rồi lấy đúng khóa của hãng đó,
+ * để khóa của hãng này không bao giờ bị gửi tới hãng khác.
+ * @returns {{ model: string, apiKey: string }}
+ */
+function resolveProvider(env = process.env) {
+  for (const [model, provider] of Object.entries(PROVIDERS)) {
+    if (env[provider.keyEnv]) return { model, apiKey: env[provider.keyEnv] };
+  }
+  throw new Error('API Key is missing. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
+}
+
+/** Thời gian chờ mỗi lần gọi (ms): SPECKIT_LLM_TIMEOUT_MS nếu là số nguyên dương, ngược lại mặc định. */
+function resolveTimeoutMs(env = process.env) {
+  const value = Number(env.SPECKIT_LLM_TIMEOUT_MS);
+  return Number.isInteger(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+}
+
+const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function networkError(label, err, timeoutMs) {
+  if (err && err.name === 'TimeoutError') {
+    return new Error(`${label} did not answer within ${Math.round(timeoutMs / 1000)}s`);
+  }
+  const cause = err && err.cause ? ` (${err.cause.code || err.cause.message})` : '';
+  return new Error(`${label} request failed: ${err && err.message}${cause}`);
+}
+
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gọi API một hãng, có timeout; thử lại tối đa MAX_ATTEMPTS lần cho lỗi nhất thời (mạng, hết giờ, 429/5xx),
+ * chờ 1s rồi 2s giữa các lần. Lỗi khác (400, 401, ...) dừng ngay.
+ * @returns {Promise<object>} JSON phản hồi
+ */
+async function requestWithRetry(label, url, init, { timeoutMs = resolveTimeoutMs(), sleep = defaultSleep } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    let failure;
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      const data = await readJson(response);
+      const apiError = data && data.error ? (data.error.message || String(data.error)) : null;
+      if (response.ok && !apiError) return data;
+
+      const message = apiError || response.statusText || 'request failed';
+      failure = {
+        error: new Error(`${label} API error${response.ok ? '' : ` (${response.status})`}: ${message}`),
+        retryable: !response.ok && RETRYABLE_STATUS.has(response.status),
+      };
+    } catch (err) {
+      failure = { error: networkError(label, err, timeoutMs), retryable: true };
+    }
+
+    if (!failure.retryable || attempt >= MAX_ATTEMPTS) throw failure.error;
+    await sleep(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+  }
+}
+
+function answerOrThrow(label, text, reason) {
+  if (typeof text !== 'string' || text.trim() === '') {
+    throw new Error(`${label} returned no answer (${reason || 'blocked or empty'})`);
+  }
+  return text;
+}
+
 /**
  * Hàm gọi API chung cho các AI Model.
+ * @param {string} prompt
+ * @param {'gemini'|'openai'|'claude'} model - hãng
+ * @param {string} apiKey - khóa của đúng hãng đó
+ * @param {{ timeoutMs?: number, sleep?: Function }} [options] - thay được trong test
  */
-async function callAI(prompt, model, apiKey) {
+async function callAI(prompt, model, apiKey, options = {}) {
+  const provider = PROVIDERS[model];
+  if (!provider) throw new Error(`Unsupported model: ${model}`);
+  const modelName = process.env[provider.modelEnv] || provider.defaultModel;
+
   if (model === 'gemini') {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+    const data = await requestWithRetry(provider.label, url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" }
-      })
-    });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.candidates[0].content.parts[0].text;
-  } 
-  
+        generationConfig: { response_mime_type: 'application/json' },
+      }),
+    }, options);
+    const candidate = data.candidates && data.candidates[0];
+    const reason = (data.promptFeedback && data.promptFeedback.blockReason) || (candidate && candidate.finishReason);
+    return answerOrThrow(provider.label, candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text, reason);
+  }
+
   if (model === 'openai') {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const data = await requestWithRetry(provider.label, 'https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: modelName,
         messages: [{ role: 'user', content: prompt }],
-        response_format: { type: "json_object" }
-      })
-    });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.choices[0].message.content;
+        response_format: { type: 'json_object' },
+      }),
+    }, options);
+    const choice = data.choices && data.choices[0];
+    return answerOrThrow(provider.label, choice && choice.message && choice.message.content, choice && choice.finish_reason);
   }
 
-  if (model === 'claude') {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt + "\\n\\nPlease return ONLY valid JSON." }]
-      })
-    });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.content[0].text;
-  }
-
-  throw new Error(`Unsupported model: ${model}`);
+  const data = await requestWithRetry(provider.label, 'https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: modelName,
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: `${prompt}\n\nPlease return ONLY valid JSON.` }],
+    }),
+  }, options);
+  return answerOrThrow(provider.label, data.content && data.content[0] && data.content[0].text, data.stop_reason);
 }
+
 
 function safeParseJson(raw) {
   try {
@@ -124,15 +203,7 @@ function safeParseJson(raw) {
  * Sinh tài liệu tự động dựa trên project context
  */
 async function generateDocs(targetDir) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('API Key is missing. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
-  }
-
-  let model = 'gemini';
-  if (process.env.OPENAI_API_KEY) model = 'openai';
-  if (process.env.ANTHROPIC_API_KEY) model = 'claude';
-  if (process.env.GEMINI_API_KEY) model = 'gemini'; // Ưu tiên Gemini nếu có nhiều key
+  const { apiKey, model } = resolveProvider();
 
   const context = scanProject(targetDir);
   
@@ -152,20 +223,30 @@ ${JSON.stringify(context, null, 2)}`;
 
   try {
     const rawResult = await callAI(prompt, model, apiKey);
-    return safeParseJson(rawResult);
+    return normalizeGeneratedDocs(safeParseJson(rawResult));
   } catch (err) {
     throw new Error(`AI Generation failed: ${err.message}`);
   }
 }
 
+/**
+ * Kiểm kết quả của --mode=auto: phải có hai chuỗi không rỗng, để scaffold không ghi nội dung sai kiểu.
+ * @returns {{ technology: string, projectOverview: string }}
+ */
+function normalizeGeneratedDocs(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new Error('Generated docs are malformed: expected a JSON object.');
+  }
+  for (const field of ['technology', 'projectOverview']) {
+    if (typeof result[field] !== 'string' || result[field].trim() === '') {
+      throw new Error(`Generated docs are malformed: "${field}" must be a non-empty string.`);
+    }
+  }
+  return { technology: result.technology, projectOverview: result.projectOverview };
+}
+
 async function getApiKeyAndModel() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('API Key is missing. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
-  let model = 'gemini';
-  if (process.env.OPENAI_API_KEY) model = 'openai';
-  if (process.env.ANTHROPIC_API_KEY) model = 'claude';
-  if (process.env.GEMINI_API_KEY) model = 'gemini';
-  return { apiKey, model };
+  return resolveProvider();
 }
 
 async function generateHandoffSummary(diff) {
@@ -253,4 +334,4 @@ ${diff}`;
   }
 }
 
-module.exports = { scanProject, callAI, generateDocs, generateHandoffSummary, reviewCode };
+module.exports = { scanProject, callAI, resolveProvider, generateDocs, generateHandoffSummary, reviewCode };

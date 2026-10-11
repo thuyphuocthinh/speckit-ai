@@ -21,7 +21,7 @@ Usage:
   npx speckit-ai --init-hook [--force]
   npx speckit-ai idea "<title>"
   npx speckit-ai start "<title or idea>" [--affects=<feature>,<feature>] [--baseline]
-  npx speckit-ai done [<name>] [--force]
+  npx speckit-ai done [<name>] [--force | --check]
   npx speckit-ai status [--json]
   npx speckit-ai generate <adr|contract> "<title>" [--for=<feature>] [--work=<name>]
   npx speckit-ai generate tests [<name>]
@@ -43,6 +43,7 @@ Commands (SDD flow: idea -> start -> done):
   start "<Title|idea>"             Start a work in specs/active/ (a new feature, or --affects=<a,b> to change existing features)
   start "<Title>" --baseline       Write the spec of code that already exists (no tasks/review needed at done)
   done [<name>] [--force]          Check gates, write specs to specs/features/, keep work files in specs/.history/
+  done [<name>] --check            Run the same gates and report; writes nothing (exit 1 if not ready)
   status [--json]                  Show active works and ideas in dependency order
   generate adr "<Title>"           New decision record (next to the feature with --for, else the active work, else specs/decisions/)
   generate contract "<Title>"      New API/Data Contract (same placement rules as adr)
@@ -92,7 +93,7 @@ const ALLOWED_FLAGS = {
   '': ['mode', 'init-hook', 'force'],
   idea: [],
   start: ['affects', 'baseline'],
-  done: ['force'],
+  done: ['force', 'check'],
   status: ['json'],
   generate: ['for', 'work'],
   g: ['for', 'work'],
@@ -197,6 +198,13 @@ async function dispatch(argv, targetDir) {
       return 0;
 
     case 'done':
+      if (flags.check !== undefined && flags.check !== true) {
+        throw new Error('--check does not take a value');
+      }
+      if (flags.check === true) {
+        if (flags.force) throw new Error('--check cannot be combined with --force (--check never writes anything)');
+        return done.printCheck(targetDir, { name: text || undefined }) ? 0 : 1;
+      }
       done.finishWork(targetDir, { name: text || undefined, force: Boolean(flags.force) });
       return 0;
 

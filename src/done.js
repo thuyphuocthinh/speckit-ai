@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getPaths, parseMeta, parseList, sha256, resolveActive } = require('./features');
+const { getPaths, parseMeta, parseList, sha256, resolveActive, extractAcBlocks } = require('./features');
 const { getNextAdrNumber } = require('./generator');
 
 /** Các thẻ HTML thường gặp, không coi là placeholder `<...>` */
@@ -50,20 +50,6 @@ function getSectionLines(content, title) {
     if (/^##\s/.test(lines[i])) { end = i; break; }
   }
   return lines.slice(start + 1, end);
-}
-
-/**
- * Các tiêu chí `### AC-n: ...` của một spec: số n -> nội dung (đến heading `##` kế tiếp),
- * đã chuẩn hóa kiểu xuống dòng và khoảng trắng đầu/cuối để so sánh giữa hai phiên bản.
- */
-function extractAcBlocks(content) {
-  const blocks = new Map();
-  for (const part of content.split(/^(?=###\s+AC-\d+:)/m)) {
-    const match = part.match(/^###\s+AC-(\d+):/);
-    if (!match) continue;
-    blocks.set(Number(match[1]), part.split(/^##\s/m)[0].replace(/\r\n/g, '\n').trim());
-  }
-  return blocks;
 }
 
 function listMarkdown(dir) {
@@ -429,4 +415,28 @@ function finishWork(targetDir, { name, force = false } = {}) {
   return { name: workName, features: targetSlugs, historyDir, skipped, lessons: lessonWrites.map((write) => write.slug) };
 }
 
-module.exports = { checkWork, finishWork, findPlaceholders, extractLessons };
+/**
+ * `done --check`: chạy mọi cổng của `done` và báo kết quả, không ghi hay di chuyển gì.
+ * @param {string} targetDir
+ * @param {{ name?: string }} [options]
+ * @returns {boolean} true nếu mọi cổng đều qua
+ */
+function printCheck(targetDir, { name } = {}) {
+  const { name: workName, errors } = checkWork(targetDir, name);
+
+  if (errors.length === 0) {
+    console.log(`[speckit-ai] ✅ All gates pass for "${workName}" (nothing was written). Finish with: speckit-ai done ${workName}`);
+    return true;
+  }
+
+  console.error(`[speckit-ai] ❌ "${workName}" is not ready to finish (nothing was written):`);
+  for (const { message, forceable } of errors) {
+    console.error(`  - ${message}${forceable ? '' : ' [cannot be bypassed with --force]'}`);
+  }
+  if (errors.some((e) => e.forceable)) {
+    console.error('[speckit-ai] Fix these, or finish with "speckit-ai done --force" to bypass the ones that can be bypassed.');
+  }
+  return false;
+}
+
+module.exports = { checkWork, finishWork, printCheck, findPlaceholders, extractLessons };

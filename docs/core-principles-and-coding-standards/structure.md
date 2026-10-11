@@ -22,7 +22,7 @@ Create-ai-doc-cli/
 │   ├── scaffolder.js              ← Tạo thư mục và copy template files
 │   ├── stealth.js                 ← Ghi vào .git/info/exclude
 │   ├── hook.js                    ← Cài git hook pre-commit (chạy lint)
-│   ├── features.js                ← Tìm việc active / feature / ý tưởng, metadata, sha256
+│   ├── features.js                ← Tìm việc active / feature / ý tưởng, metadata, sha256, tách và so sánh AC giữa hai bản spec
 │   ├── lifecycle.js               ← idea, start, status
 │   ├── done.js                    ← done: cổng kiểm tra, đóng gói, cất vào .history
 │   ├── generator.js               ← generate adr | contract | tests

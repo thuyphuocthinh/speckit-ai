@@ -19,6 +19,44 @@ function toKebabCase(str) {
     .toLowerCase();
 }
 
+/** Nội dung một khối `### AC-n: ...` (đến heading `##` kế tiếp), chuẩn hóa kiểu xuống dòng và khoảng trắng đầu/cuối để so sánh. */
+function acBlockText(part) {
+  return part.split(/^##\s/m)[0].replace(/\r\n/g, '\n').trim();
+}
+
+/**
+ * Các tiêu chí `### AC-n: ...` của một spec: số n -> nội dung đã chuẩn hóa.
+ * Dùng để biết AC nào mới hoặc đã đổi giữa hai phiên bản của cùng một spec.
+ * @returns {Map<number, string>}
+ */
+function extractAcBlocks(content) {
+  const blocks = new Map();
+  for (const part of content.split(/^(?=###\s+AC-\d+:)/m)) {
+    const match = part.match(/^###\s+AC-(\d+):/);
+    if (match) blocks.set(Number(match[1]), acBlockText(part));
+  }
+  return blocks;
+}
+
+/**
+ * Rút gọn spec để gửi cho model: mỗi AC không đổi so với `original` chỉ còn dòng tiêu đề kèm "(unchanged, omitted)";
+ * mọi phần khác của spec và các AC mới hoặc đã đổi giữ nguyên.
+ */
+function omitUnchangedAcs(content, original) {
+  const originalBlocks = extractAcBlocks(original);
+  return content
+    .split(/^(?=###\s+AC-\d+:)/m)
+    .map((part) => {
+      const match = part.match(/^###\s+AC-(\d+):/);
+      if (!match || acBlockText(part) !== originalBlocks.get(Number(match[1]))) return part;
+
+      const next = part.search(/^##\s/m); // heading cấp 2 kế tiếp (nếu có) kết thúc khối AC
+      const tail = next === -1 ? '' : part.slice(next);
+      return `${part.split(/\r?\n/, 1)[0]} (unchanged, omitted)\n\n${tail}`;
+    })
+    .join('');
+}
+
 /**
  * Các đường dẫn chuẩn của bố cục specs/ (ideas → active → features).
  */
@@ -230,6 +268,8 @@ module.exports = {
   setMeta,
   parseList,
   sha256,
+  extractAcBlocks,
+  omitUnchangedAcs,
   listDirs,
   listActive,
   resolveActive,

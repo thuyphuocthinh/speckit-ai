@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { checkWork, finishWork, findPlaceholders, extractLessons } = require('../src/done');
+const { checkWork, finishWork, printCheck, findPlaceholders, extractLessons } = require('../src/done');
 const { sha256 } = require('../src/features');
 
 const VALID_SPEC = `# Spec: Refund
@@ -703,6 +703,72 @@ not part of the lessons
       expect(lessons).toContain('\r\n');
       expect(lessons).not.toMatch(/[^\r]\n/);
       expect(lessons).toContain(`## ${today} · token`);
+    });
+  });
+
+  describe('AC-23: printCheck() (done --check)', () => {
+    let errorSpy;
+
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    const printed = (spy) => spy.mock.calls.map((call) => call.join(' ')).join('\n');
+
+    test('việc hợp lệ: trả true, báo mọi cổng đều qua, và không ghi/di chuyển gì', () => {
+      setupWork('refund');
+      const before = snapshot();
+
+      expect(printCheck(tmpDir)).toBe(true);
+
+      expect(printed(console.log)).toContain('All gates pass for "refund" (nothing was written)');
+      expect(snapshot()).toEqual(before);
+      expect(exists('specs/features/refund/spec.md')).toBe(false);
+    });
+
+    test('việc chưa đạt: trả false, liệt kê mọi lý do, đánh dấu lý do --force không bỏ qua được, không ghi gì', () => {
+      setupWork('refund', { refund: { content: VALID_SPEC.replace('- [x] Partial', '- [ ] Partial') } }, { tasks: '# Tasks\n' });
+      write('specs/features/refund/spec.md', 'exists'); // feature mới nhưng spec đã có: lỗi không bỏ qua được
+      const before = snapshot();
+
+      expect(printCheck(tmpDir)).toBe(false);
+
+      const text = printed(errorSpy);
+      expect(text).toContain('"refund" is not ready to finish (nothing was written)');
+      expect(text).toContain('unresolved item(s) under "Open Questions"');
+      expect(text).toContain('tasks.md has no completed tasks');
+      expect(text).toMatch(/already exists.*\[cannot be bypassed with --force\]/);
+      expect(text).toContain('speckit-ai done --force');
+      expect(text).not.toMatch(/unresolved item\(s\)[^\n]*cannot be bypassed/);
+      expect(snapshot()).toEqual(before);
+    });
+
+    test('chỉ có lỗi không bỏ qua được thì không gợi ý --force', () => {
+      setupWork('refund');
+      write('specs/features/refund/spec.md', 'exists');
+
+      expect(printCheck(tmpDir)).toBe(false);
+
+      expect(printed(errorSpy)).not.toContain('speckit-ai done --force');
+    });
+
+    test('nêu tên việc khi có nhiều việc; không nêu thì báo lỗi như done', () => {
+      setupWork('refund');
+      setupWork('other', { other: { content: VALID_SPEC } });
+
+      expect(() => printCheck(tmpDir)).toThrow('Multiple active works found (other, refund)');
+      expect(printCheck(tmpDir, { name: 'refund' })).toBe(true);
+    });
+
+    test('không có việc nào thì báo lỗi', () => {
+      expect(() => printCheck(tmpDir)).toThrow('No active work found');
+    });
+
+    test('kết quả khớp với finishWork: việc qua --check thì done thật cũng thành công', () => {
+      setupWork('refund');
+
+      expect(printCheck(tmpDir)).toBe(true);
+      expect(() => finishWork(tmpDir)).not.toThrow();
     });
   });
 

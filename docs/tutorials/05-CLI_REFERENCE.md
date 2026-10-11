@@ -34,7 +34,18 @@ Sets up a project. Safe to run again: files that already exist are **never overw
 | `--mode=existing` | Skeleton docs with `<!-- AI-PROMPT: ... -->` markers for your AI agent to fill from the real code |
 | `--mode=auto` | The CLI sends your project structure and config files (`package.json`, `go.mod`, ...) to an LLM and writes `docs/technology.md` and `docs/project-overview.md` |
 
-`--mode=auto` needs an API key in the environment or in the project's `.env`: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` (Gemini wins if several are set).
+`--mode=auto` needs an API key in the environment or in the project's `.env`: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. If several are set, the provider is chosen first (Gemini, then Claude, then OpenAI) and only that provider's key is sent. The answer must have a non-empty `technology` and `projectOverview`; otherwise nothing is written.
+
+`--mode=auto`, `handoff` and `review` call an LLM. Optional settings (environment or `.env`):
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `SPECKIT_LLM_TIMEOUT_MS` | How long to wait for one answer (positive integer, milliseconds) | `60000` |
+| `SPECKIT_GEMINI_MODEL` | Gemini model | `gemini-1.5-flash` |
+| `SPECKIT_ANTHROPIC_MODEL` | Claude model | `claude-sonnet-5-5` |
+| `SPECKIT_OPENAI_MODEL` | OpenAI model | `gpt-4o-mini` |
+
+A call that fails for a temporary reason (network error, timeout, HTTP 429, 500, 502, 503 or 504) is tried up to 3 times in total, waiting 1 second and then 2 seconds. Other errors (wrong key, bad request) stop at once with the provider's message, and an empty or blocked answer is reported with its reason. The defaults for Gemini and OpenAI were not checked against the live APIs: if a provider has retired a model, set the variable of that provider to a current one.
 
 It creates `.agents/`, `CLAUDE.md`, `.cursorrules`, `docs/`, and `specs/` (`_template.md`, `_workflow.md`, `ideas/`, `active/`, `features/`, `decisions/`, `contracts/`), then adds those paths to `.git/info/exclude` ("stealth": nothing is ever committed unless you decide to).
 
@@ -120,6 +131,8 @@ work.json              fingerprints (sha256) of the original specs. Do not edit.
 ## `done [<name>] [--force]`
 
 Finishes a work. It runs **all** checks first and writes nothing unless every one passes.
+
+`done [<name>] --check` runs exactly the same checks but **never writes, moves or deletes anything**: exit code `0` and `All gates pass for "<name>" (nothing was written)` when the work is ready, exit code `1` and the full list of reasons when it is not (reasons that `--force` cannot bypass are marked). Use it to see what is missing, or in a script. It cannot be combined with `--force`.
 
 | Check | Fix |
 |---|---|
@@ -253,6 +266,7 @@ A review never passes on data it has not fully seen:
 - A diff longer than 15,000 characters is split **by file** and each part is reviewed separately; the result is *passed* only if every part passed, and the violations of all parts are listed.
 - If the diff of a single file is over 15,000 characters, the command stops with exit code `1` and names the file (review it by hand, or split the change).
 - Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `go.sum`, `Cargo.lock`, ...) are not sent; a warning lists them.
+- When the work changes an existing feature, the spec sent to the model keeps every new or changed acceptance criterion in full; each unchanged one is reduced to its heading plus `(unchanged, omitted)`. A new feature is sent as written.
 - An answer of the model that has the wrong shape (for example `"success": "false"` as text) is rejected, and an answer that says `success: true` but lists violations counts as failed.
 
 Errors: `No target specs found ...`, `No code changes to review.`, `The diff of <file> is N characters, over the 15000 limit ...`, `AI Review failed: Review response is malformed ...`, `API Key is missing ...`.

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const llm = require('./llm');
 const { collectDiff, chunkDiff } = require('./gitdiff');
-const { resolveActive } = require('./features');
+const { resolveActive, getPaths, omitUnchangedAcs } = require('./features');
 
 /**
  * Review code (git diff) so với các spec trong targets/ của việc đang làm và AGENTS.md.
@@ -23,8 +23,15 @@ async function analyze(name, targetDir, referenceFile = null) {
     throw new Error(`No target specs found in ${path.relative(targetDir, targetsDir)}.`);
   }
 
+  // Với feature đang sửa, AC không đổi so với spec hiện có chỉ còn dòng tiêu đề (giữ context nhỏ, tập trung vào phần thay đổi)
+  const { features } = getPaths(targetDir);
   const specContent = targetFiles
-    .map((f) => `<!-- ${f} -->\n${fs.readFileSync(path.join(targetsDir, f), 'utf-8')}`)
+    .map((f) => {
+      const target = fs.readFileSync(path.join(targetsDir, f), 'utf-8');
+      const current = path.join(features, f.replace(/\.md$/, ''), 'spec.md');
+      const content = fs.existsSync(current) ? omitUnchangedAcs(target, fs.readFileSync(current, 'utf-8')) : target;
+      return `<!-- ${f} -->\n${content}`;
+    })
     .join('\n\n');
 
   const agentsPath = path.join(targetDir, '.agents', 'AGENTS.md');

@@ -93,6 +93,56 @@ describe('Reviewer Command', () => {
     expect(llm.reviewCode.mock.calls[0][3]).toBe('REFERENCE CODE');
   });
 
+  describe('AC-8: chỉ gửi AC mới hoặc đã đổi của feature đang sửa', () => {
+    const SPEC = [
+      '# Spec: Auth', '', '## Acceptance Criteria', '',
+      '### AC-1: Sign in', 'Given a user', 'When they sign in', 'Then they get a token', '',
+      '### AC-2: Sign out', 'Given a session', 'When they sign out', 'Then the token is revoked', '',
+      '## Technical Constraints', '', '- Use JWT', '',
+    ].join('\n');
+
+    beforeEach(() => {
+      child_process.execSync.mockReturnValue('diff content');
+      llm.reviewCode.mockResolvedValue({ success: true, errors: [] });
+    });
+
+    it('feature có sẵn: AC không đổi chỉ còn tiêu đề, AC đã đổi và phần khác của spec giữ nguyên', async () => {
+      write('specs/features/auth/spec.md', SPEC);
+      write('specs/active/a/targets/auth.md', SPEC.replace('Then the token is revoked', 'Then the token is revoked within 1s'));
+
+      await reviewer.analyze(undefined, tmpDir);
+
+      const specContent = llm.reviewCode.mock.calls[0][0];
+      expect(specContent).toContain('### AC-1: Sign in (unchanged, omitted)');
+      expect(specContent).not.toContain('When they sign in');
+      expect(specContent).toContain('Then the token is revoked within 1s');
+      expect(specContent).toContain('## Technical Constraints');
+    });
+
+    it('feature mới (chưa có spec trong features/): gửi nguyên văn', async () => {
+      write('specs/active/a/targets/auth.md', SPEC);
+
+      await reviewer.analyze(undefined, tmpDir);
+
+      expect(llm.reviewCode.mock.calls[0][0]).toContain(SPEC);
+      expect(llm.reviewCode.mock.calls[0][0]).not.toContain('unchanged, omitted');
+    });
+
+    it('cùng một phần spec rút gọn được dùng cho mọi phần diff', async () => {
+      const section = (name) => `diff --git a/${name} b/${name}\n${'x'.repeat(9000)}\n`;
+      child_process.execSync.mockImplementation((command) => (command.startsWith('git ls-files') ? '' : section('a.js') + section('b.js')));
+      write('specs/features/auth/spec.md', SPEC);
+      write('specs/active/a/targets/auth.md', SPEC.replace('Then they get a token', 'Then they get a token and a cookie'));
+
+      await reviewer.analyze(undefined, tmpDir);
+
+      expect(llm.reviewCode).toHaveBeenCalledTimes(2);
+      const [first, second] = llm.reviewCode.mock.calls.map((call) => call[0]);
+      expect(first).toBe(second);
+      expect(first).toContain('### AC-2: Sign out (unchanged, omitted)');
+    });
+  });
+
   describe('diff dài, file mới và lock file', () => {
     /** Section diff giả dài đúng `size` ký tự cho file `name`. */
     function section(name, size) {

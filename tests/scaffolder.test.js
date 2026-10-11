@@ -236,6 +236,22 @@ describe('scaffold()', () => {
     expect(read('.agents', 'AGENTS.md')).toContain('specs/features/<slug>/lessons.md');
   });
 
+  test('hotfix spec trực tiếp: _workflow.md cho phép đúng một dòng Changelog viết tay, không mâu thuẫn với Rules', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const workflow = fs.readFileSync(path.join(tmpDir, 'specs', '_workflow.md'), 'utf8');
+
+    expect(workflow).toContain('add one line to its `## Changelog` (`- <date> · hotfix · <what and why>`)');
+    expect(workflow).toContain('The one exception is the single `hotfix` line');
+  });
+
+  test('AC-23: _workflow.md và AGENTS.md nhắc done --check', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const read = (...p) => fs.readFileSync(path.join(tmpDir, ...p), 'utf8');
+
+    expect(read('specs', '_workflow.md')).toContain('| `speckit-ai done --check` | Run the same gates and report what is missing; writes nothing |');
+    expect(read('.agents', 'AGENTS.md')).toContain('npx speckit-ai done --check');
+  });
+
   test('monorepo: specs/ chỉ tạo một lần ở root, không lặp theo sub-project', () => {
     scaffold({
       targetDir: tmpDir,

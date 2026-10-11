@@ -146,6 +146,28 @@ describe('cli.js', () => {
       expect(fs.readdirSync(tmpDir)).toEqual([]);
     });
 
+    test('AC-7: --mode=auto thất bại thì dừng, không ghi file nào, và thông báo không đổ lỗi cho riêng khóa API', async () => {
+      const saved = {};
+      for (const name of ['GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY']) {
+        saved[name] = process.env[name];
+        delete process.env[name];
+      }
+
+      try {
+        expect(await run(['--mode=auto'], tmpDir)).toBe(1);
+      } finally {
+        for (const [name, value] of Object.entries(saved)) {
+          if (value !== undefined) process.env[name] = value;
+        }
+      }
+
+      expect(output()).toContain('Aborting: nothing was written');
+      expect(output()).toContain('API Key is missing');
+      expect(output()).not.toContain('Set an API key in your environment');
+      expect(exists('docs')).toBe(false);
+      expect(exists('.agents')).toBe(false);
+    });
+
     test('AC-13: chạy mặc định tạo bố cục mới', async () => {
       expect(await run([], tmpDir)).toBe(0);
       expect(exists('specs/ideas/_template.md')).toBe(true);
@@ -254,6 +276,50 @@ describe('cli.js', () => {
       expect(exists('specs/features/refund/decisions/0001-use-saga.md')).toBe(true);
       expect(exists(`specs/.history/${today}-refund/proposal.md`)).toBe(true);
       expect(exists('specs/active/refund')).toBe(false);
+    });
+
+    test('AC-23: done --check báo chưa sẵn sàng (exit 1) rồi sẵn sàng (exit 0) mà không ghi hay di chuyển gì', async () => {
+      await run([], tmpDir);
+      await run(['start', 'Refund'], tmpDir);
+
+      expect(await run(['done', '--check'], tmpDir)).toBe(1);
+      expect(output()).toContain('"refund" is not ready to finish (nothing was written)');
+      expect(output()).toContain('unresolved item(s) under "Open Questions"');
+      expect(exists('specs/active/refund')).toBe(true);
+      expect(exists('specs/features/refund')).toBe(false);
+
+      write('specs/active/refund/targets/refund.md', SPEC);
+      write('specs/active/refund/tasks.md', '# Tasks\n\n## Phase 4: Tests\n\n- [x] Add tests\n');
+      write('specs/active/refund/review.md', '# Review\n\n## 5a. Code Review\n\nOK\n\n## 5e. Summary\n\n- AC-1: Pass\n');
+      console.log.mockClear();
+
+      expect(await run(['done', 'refund', '--check'], tmpDir)).toBe(0);
+      expect(output()).toContain('All gates pass for "refund" (nothing was written)');
+      expect(exists('specs/active/refund')).toBe(true); // vẫn chưa được cất vào .history
+      expect(exists('specs/features/refund')).toBe(false);
+
+      expect(await run(['done'], tmpDir)).toBe(0); // done thật vẫn chạy bình thường sau --check
+      expect(exists('specs/features/refund/spec.md')).toBe(true);
+    });
+
+    test('AC-23: --check không kết hợp với --force, không nhận giá trị, và báo lỗi khi không có việc', async () => {
+      await run([], tmpDir);
+
+      expect(await run(['done', '--check'], tmpDir)).toBe(1);
+      expect(output()).toContain('No active work found');
+
+      expect(await run(['done', '--check', '--force'], tmpDir)).toBe(1);
+      expect(output()).toContain('--check cannot be combined with --force');
+
+      expect(await run(['done', '--check=yes'], tmpDir)).toBe(1);
+      expect(output()).toContain('--check does not take a value');
+    });
+
+    test('AC-23: help nhắc done --check', async () => {
+      await run(['--help'], tmpDir);
+
+      expect(output()).toContain('done [<name>] --check');
+      expect(HELP).toContain('[--force | --check]');
     });
 
     test('AC-17: baseline cho code có sẵn: start --baseline, viết spec, done, rồi --affects dùng được', async () => {

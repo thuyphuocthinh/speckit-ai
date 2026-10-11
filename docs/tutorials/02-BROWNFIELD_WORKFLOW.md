@@ -96,7 +96,7 @@ A bug fix does not need `start`, unless it is a real change to a spec:
 |---|---|
 | Typo, null check (< 30 min) | Fix + commit message only |
 | Code is wrong, spec is right | Fix the code, add a regression test for the relevant `AC-n`, commit `fix(auth): ...` |
-| Spec is wrong or missing something, and it is urgent | Edit `specs/features/auth/spec.md` directly, add a line to its `## Changelog`, add a test |
+| Spec is wrong or missing something, and it is urgent | Edit `specs/features/auth/spec.md` directly, add one line to its `## Changelog` (`- <date> · hotfix · <what and why>`), add a test |
 | Large fix that needs a plan, or touches several features | A normal work: `start "..." --affects=...` |
 
 If a work in progress also targets the feature you edited directly, `done` will report the fingerprint mismatch: merge your change into that work's copy, then `done --force`.

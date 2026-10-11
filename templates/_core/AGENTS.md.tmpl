@@ -41,7 +41,7 @@ Read the rest only when the task needs it (this keeps your context small):
 - Before starting a new feature or a spec change → run `npx speckit-ai start "<title>"` (add `--affects=<feature>` to change an existing feature) and write the spec first
 - Read `specs/_workflow.md` to understand the SDD cycle, the gates and how to handle hotfixes
 - Before changing an existing feature, read `specs/features/<slug>/lessons.md` if it exists (lessons from earlier work on it)
-- Before reporting a task as done → run `npx speckit-ai lint` and `npx speckit-ai done`
+- Before reporting a task as done → run `npx speckit-ai lint`, then `npx speckit-ai done --check` to see what is missing, then `npx speckit-ai done`
 - Never read or edit `specs/.history/` (archived work files)
 
 ---
