@@ -106,7 +106,7 @@ export GEMINI_API_KEY="your_api_key_here"
 npx speckit-ai --mode=auto
 ```
 
-Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase!
+Instead of generating empty skeletons, the CLI will scan your source code structure and configurations (`package.json`, `go.mod`, etc.) and send them to an LLM (Gemini, OpenAI, or Claude). The AI will automatically write accurate `technology.md` and `project-overview.md` files based on your actual codebase! Calls are retried on temporary errors, and the timeout and model names can be changed with environment variables (see the [CLI reference](docs/tutorials/05-CLI_REFERENCE.md)).
 
 ### The SDD flow
 
@@ -307,13 +307,13 @@ Create a `.speckitrc` (or `speckit.config.json`) in your project root:
 
 This project uses an automated GitHub Actions CI/CD pipeline for publishing.
 
-To release a new version to npm:
-1. Bump the version in `package.json` (e.g. `0.1.1`).
-2. Commit the change: `git commit -am "chore: release v0.1.1"`
-3. Tag the commit: `git tag v0.1.1`
-4. Push the tag: `git push origin v0.1.1`
+To release a new version to npm (see `docs/core-principles-and-coding-standards/instructions-and-work-flows/releasing-to-npm.md` for details):
+1. Add the changes to `CHANGELOG.md`, and bump the version in `package.json` (e.g. `2.3.0`).
+2. Commit the change: `git commit -am "chore: bump version to v2.3.0"` and push `main` (CI runs the tests on every push and pull request).
+3. Tag the commit: `git tag v2.3.0`
+4. Push the tag: `git push origin v2.3.0`
 
-The pipeline will automatically run tests and publish the new version to npm with a Provenance badge.
+The pipeline checks that the tag matches the version in `package.json`, runs the tests and publishes the new version to npm with a Provenance badge.
 
 ---
 
