@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { checkWork, finishWork, findPlaceholders } = require('../src/done');
+const { checkWork, finishWork, findPlaceholders, extractLessons } = require('../src/done');
 const { sha256 } = require('../src/features');
 
 const VALID_SPEC = `# Spec: Refund
@@ -48,6 +48,10 @@ OK
 ## 5b. Test Review
 
 OK
+
+## 5e. Summary
+
+- AC-1: Pass
 `;
 
 describe('done.js', () => {
@@ -188,6 +192,122 @@ describe('done.js', () => {
 
       write('specs/active/refund/review.md', '  \n');
       expect(codes()).toEqual(['review']);
+    });
+
+    describe('AC-20: review.md phải nhắc tới từng AC', () => {
+      const TWO_AC_SPEC = VALID_SPEC.replace(
+        '## Open Questions',
+        '### AC-2: Partial refund\nGiven a paid order\nWhen part is refunded\nThen only that part is returned\n\n## Open Questions'
+      );
+
+      test('thiếu AC nào thì báo đúng AC đó và liệt kê theo thứ tự số', () => {
+        const spec = TWO_AC_SPEC.replace('## Open Questions', '### AC-10: Big refund\nGiven x\nWhen y\nThen z\n\n## Open Questions');
+        setupWork('refund', { refund: { content: spec } }, { review: '# Review\n\nAC-2 pass.\n' });
+
+        const { errors } = checkWork(tmpDir);
+
+        expect(errors.map((e) => e.code)).toEqual(['review-ac']);
+        expect(errors[0].message).toContain('review.md does not mention: AC-1, AC-10.');
+        expect(errors[0].forceable).toBe(true);
+      });
+
+      test('review nhắc đủ mọi AC thì qua', () => {
+        setupWork('refund', { refund: { content: TWO_AC_SPEC } }, { review: '# Review\n\n- AC-1: Pass\n- AC-2: Pass\n' });
+
+        expect(codes()).toEqual([]);
+      });
+
+      test('AC-1 không được thỏa bởi AC-10 (và ngược lại), không phân biệt hoa thường', () => {
+        setupWork('refund', undefined, { review: '# Review\n\nAC-10 and AC-11 pass.\n' });
+        expect(codes()).toEqual(['review-ac']);
+
+        write('specs/active/refund/review.md', '# Review\n\nac-1 passes.\n');
+        expect(codes()).toEqual([]);
+      });
+
+      test('AC của mọi target đều phải được nhắc (việc xuyên nhiều feature)', () => {
+        setupWork('token', {
+          auth: { content: VALID_SPEC.replace('Refund', 'Auth'), baseline: true },
+          order: { content: TWO_AC_SPEC.replace('Refund', 'Order'), baseline: true },
+        }, { review: '# Review\n\nAC-1: Pass\n' });
+
+        const { errors } = checkWork(tmpDir);
+
+        expect(errors.map((e) => e.code)).toEqual(['review-ac']);
+        expect(errors[0].message).toContain('does not mention: AC-2.');
+      });
+
+      test('sửa feature có sẵn: chỉ AC mới hoặc đã đổi nội dung phải được nhắc, AC không đổi thì không', () => {
+        const edited = TWO_AC_SPEC
+          .replace('Then only that part is returned', 'Then only that part is returned, within 2 days')
+          .replace('## Open Questions', '### AC-3: Refund to wallet\nGiven x\nWhen y\nThen z\n\n## Open Questions');
+        setupWork('refund-v2', { refund: { content: edited, baseline: true, baselineContent: TWO_AC_SPEC } }, { review: '# Review\n\nAC-2: Pass\n' });
+
+        const { errors } = checkWork(tmpDir);
+
+        expect(errors.map((e) => e.code)).toEqual(['review-ac']);
+        expect(errors[0].message).toContain('does not mention: AC-3.'); // AC-1 không đổi nên không bắt buộc
+
+        write('specs/active/refund-v2/review.md', '# Review\n\nAC-2: Pass\nAC-3: Pass\n');
+        expect(codes()).toEqual([]);
+      });
+
+      test('sửa feature có sẵn mà không đổi AC nào (chỉ đổi mô tả) thì review.md chỉ cần không rỗng', () => {
+        setupWork('refund-v2', {
+          refund: { content: TWO_AC_SPEC.replace('Customers can refund an order.', 'Updated overview.'), baseline: true, baselineContent: TWO_AC_SPEC },
+        }, { review: '# Review\n\nOverview reworded only.\n' });
+
+        expect(codes()).toEqual([]);
+      });
+
+      test('khác biệt kiểu xuống dòng (CRLF) và khoảng trắng cuối không bị coi là AC đã đổi', () => {
+        const crlf = TWO_AC_SPEC.replace(/\n/g, '\r\n');
+        setupWork('refund-v2', { refund: { content: TWO_AC_SPEC, baseline: true, baselineContent: crlf } }, { review: '# Review\n\nnothing\n' });
+
+        expect(codes()).toEqual([]);
+      });
+
+      test('review.md thiếu hoặc rỗng thì chỉ có lỗi review, không thêm lỗi review-ac', () => {
+        setupWork('refund');
+        fs.unlinkSync(path.join(tmpDir, 'specs/active/refund/review.md'));
+        expect(codes()).toEqual(['review']);
+
+        write('specs/active/refund/review.md', ' \n');
+        expect(codes()).toEqual(['review']);
+      });
+
+      test('không có AC nào thì chỉ có lỗi ac-format, không thêm lỗi review-ac', () => {
+        setupWork('refund', { refund: { content: VALID_SPEC.replace('### AC-1: Refund works', '- [ ] Refund works') } });
+
+        expect(codes()).toEqual(['ac-format']);
+      });
+
+      test('việc baseline không bị kiểm cổng này', () => {
+        write('specs/active/checkout/targets/checkout.md', VALID_SPEC);
+        write('specs/active/checkout/work.json', JSON.stringify({ baseline: true, targets: { checkout: null } }));
+        write('specs/active/checkout/proposal.md', '# Proposal: Checkout\n\n## Why\n\nDocument it.\n');
+        write('specs/active/checkout/review.md', '# Notes\n\nnothing about acceptance criteria\n');
+
+        expect(codes()).toEqual([]);
+      });
+
+      test('--force bỏ qua cổng và Changelog ghi forced: review-ac', () => {
+        setupWork('refund', undefined, { review: '# Review\n\nLooks fine.\n' });
+
+        const res = finishWork(tmpDir, { force: true });
+
+        expect(res.skipped).toEqual(['review-ac']);
+        expect(read('specs/features/refund/spec.md')).toContain('forced: review-ac');
+      });
+
+      test('không --force thì dừng, liệt kê AC thiếu và không ghi gì', () => {
+        setupWork('refund', undefined, { review: '# Review\n\nLooks fine.\n' });
+        const before = snapshot();
+
+        expect(() => finishWork(tmpDir)).toThrow(/review\.md does not mention: AC-1[\s\S]*Use --force/);
+
+        expect(snapshot()).toEqual(before);
+      });
     });
 
     test('AC-7: báo tham chiếu Decisions/Contracts không tồn tại, và chấp nhận khi có', () => {
@@ -365,6 +485,14 @@ describe('done.js', () => {
       expect(read('specs/features/refund/spec.md')).toMatch(/## Changelog\n\n- \d{4}-\d{2}-\d{2} · refund/);
     });
 
+    test('AC-8: dòng Changelog giữ chữ nằm trong dấu backtick của proposal (không bị mất từ)', () => {
+      setupWork('refund', undefined, { proposal: '# Proposal: Refund\n\n## Why\n\nCổng `review` của `done` chỉ kiểm file `review.md` tồn tại.\n' });
+
+      finishWork(tmpDir);
+
+      expect(read('specs/features/refund/spec.md')).toContain(`${today} · refund · Cổng review của done chỉ kiểm file review.md tồn tại. · review:`);
+    });
+
     test('proposal không có dòng nội dung thì Changelog dùng tên việc', () => {
       setupWork('refund', undefined, { proposal: '# Proposal: Refund\n\n## Why\n\n<Why?>\n' });
 
@@ -391,7 +519,7 @@ describe('done.js', () => {
     });
 
     test('review.md không nhắc loại review nào thì ghi review.md', () => {
-      setupWork('refund', undefined, { review: '# Notes\n\nAll good.\n' });
+      setupWork('refund', undefined, { review: '# Notes\n\nAC-1 passes. All good.\n' });
 
       finishWork(tmpDir);
 
@@ -465,6 +593,140 @@ describe('done.js', () => {
 
       expect(res.skipped).toEqual(['review']);
       expect(read('specs/features/refund/spec.md')).toContain('review: none · forced: review');
+    });
+  });
+
+  describe('AC-21: bài học (Lessons Learned) được lưu vào feature', () => {
+    const REVIEW_WITH_LESSONS = `${VALID_REVIEW}
+### Lessons Learned
+
+- Always validate the model answer.
+- Untracked files are not in \`git diff HEAD\`.
+
+## Next steps
+
+not part of the lessons
+`;
+
+    test('trích phần Lessons Learned vào specs/features/<slug>/lessons.md, kèm tiêu đề, ngày và tên việc', () => {
+      setupWork('refund', undefined, { review: REVIEW_WITH_LESSONS });
+
+      const res = finishWork(tmpDir);
+
+      expect(res.lessons).toEqual(['refund']);
+      const lessons = read('specs/features/refund/lessons.md');
+      expect(lessons).toContain('# Lessons: refund');
+      expect(lessons).toContain(`## ${today} · refund`);
+      expect(lessons).toContain('- Always validate the model answer.');
+      expect(lessons).toContain('- Untracked files are not in `git diff HEAD`.');
+      expect(lessons).not.toContain('not part of the lessons');
+      expect(lessons).not.toContain('Lessons Learned'); // chỉ lấy nội dung, không lấy heading của review
+    });
+
+    test('lessons.md đã có thì thêm mục mới vào cuối và giữ các mục cũ', () => {
+      setupWork('token', { auth: { content: VALID_SPEC.replace('Refund', 'Auth'), baseline: true } }, { review: REVIEW_WITH_LESSONS });
+      write('specs/features/auth/lessons.md', '# Lessons: auth\n\n## 2026-01-01 · first\n\n- old lesson\n');
+
+      finishWork(tmpDir);
+
+      const lessons = read('specs/features/auth/lessons.md');
+      expect(lessons.indexOf('old lesson')).toBeGreaterThan(-1);
+      expect(lessons.indexOf('old lesson')).toBeLessThan(lessons.indexOf(`## ${today} · token`));
+      expect(lessons.match(/^# Lessons: auth$/gm)).toHaveLength(1);
+    });
+
+    test('việc nhiều target: mỗi feature nhận bài học', () => {
+      setupWork('token', {
+        auth: { content: VALID_SPEC.replace('Refund', 'Auth'), baseline: true },
+        order: { content: VALID_SPEC.replace('Refund', 'Order'), baseline: true },
+      }, { review: REVIEW_WITH_LESSONS });
+
+      const res = finishWork(tmpDir);
+
+      expect(res.lessons).toEqual(['auth', 'order']);
+      expect(exists('specs/features/auth/lessons.md')).toBe(true);
+      expect(exists('specs/features/order/lessons.md')).toBe(true);
+    });
+
+    test.each([
+      ['không có heading Lessons Learned', VALID_REVIEW],
+      ['mục rỗng', `${VALID_REVIEW}\n### Lessons Learned\n\n## Next\n`],
+      ['chỉ ghi None', `${VALID_REVIEW}\n### Lessons Learned\n\nNone\n`],
+      ['chỉ ghi N/A', `${VALID_REVIEW}\n### Lessons Learned\n\n- N/A.\n`],
+      ['chỉ ghi Không có', `${VALID_REVIEW}\n### Lessons Learned\n\n- Không có\n`],
+      ['chỉ ghi dấu gạch', `${VALID_REVIEW}\n### Lessons Learned\n\n-\n`],
+    ])('không tạo lessons.md khi %s', (_label, review) => {
+      setupWork('refund', undefined, { review });
+
+      const res = finishWork(tmpDir);
+
+      expect(res.lessons).toEqual([]);
+      expect(exists('specs/features/refund/lessons.md')).toBe(false);
+    });
+
+    test('--force khi thiếu review.md không tạo lessons.md', () => {
+      setupWork('refund');
+      fs.unlinkSync(path.join(tmpDir, 'specs/active/refund/review.md'));
+
+      finishWork(tmpDir, { force: true });
+
+      expect(exists('specs/features/refund/lessons.md')).toBe(false);
+    });
+
+    test('việc baseline không sinh bài học', () => {
+      write('specs/active/checkout/targets/checkout.md', VALID_SPEC);
+      write('specs/active/checkout/work.json', JSON.stringify({ baseline: true, targets: { checkout: null } }));
+      write('specs/active/checkout/proposal.md', '# Proposal: Checkout\n\n## Why\n\nDocument it.\n');
+      write('specs/active/checkout/review.md', REVIEW_WITH_LESSONS);
+
+      finishWork(tmpDir);
+
+      expect(exists('specs/features/checkout/lessons.md')).toBe(false);
+    });
+
+    test('done thất bại thì không có lessons.md nào được tạo', () => {
+      setupWork('refund', { refund: { content: VALID_SPEC.replace('- [x] Partial', '- [ ] Partial') } }, { review: REVIEW_WITH_LESSONS });
+      const before = snapshot();
+
+      expect(() => finishWork(tmpDir)).toThrow(/Cannot finish/);
+
+      expect(snapshot()).toEqual(before);
+    });
+
+    test('giữ kiểu xuống dòng CRLF của lessons.md có sẵn', () => {
+      setupWork('token', { auth: { content: VALID_SPEC.replace('Refund', 'Auth'), baseline: true } }, { review: REVIEW_WITH_LESSONS });
+      write('specs/features/auth/lessons.md', '# Lessons: auth\r\n\r\n## 2026-01-01 · first\r\n\r\n- old\r\n');
+
+      finishWork(tmpDir, { force: true });
+
+      const lessons = read('specs/features/auth/lessons.md');
+      expect(lessons).toContain('\r\n');
+      expect(lessons).not.toMatch(/[^\r]\n/);
+      expect(lessons).toContain(`## ${today} · token`);
+    });
+  });
+
+  describe('extractLessons()', () => {
+    test('lấy đến heading cùng cấp hoặc cao hơn, bỏ qua dòng # nằm trong code block', () => {
+      const review = '## Summary\n\n### Lessons Learned\n\n- one\n\n```sh\n# a comment\n```\n\n#### Detail\n\nmore\n\n### Other\n\nskip\n';
+
+      const text = extractLessons(review);
+
+      expect(text).toContain('- one');
+      expect(text).toContain('# a comment');
+      expect(text).toContain('#### Detail');
+      expect(text).toContain('more');
+      expect(text).not.toContain('skip');
+    });
+
+    test('nhận heading không phân biệt hoa thường và số ít/số nhiều, có tiền tố', () => {
+      expect(extractLessons('## 5e. Summary and lesson learned\n\n- x\n')).toBe('- x');
+      expect(extractLessons('#### LESSONS LEARNED\n- y\n')).toBe('- y');
+    });
+
+    test('heading cấp 1 hoặc 5 không được nhận', () => {
+      expect(extractLessons('# Lessons Learned\n\n- x\n')).toBe('');
+      expect(extractLessons('##### Lessons Learned\n\n- x\n')).toBe('');
     });
   });
 

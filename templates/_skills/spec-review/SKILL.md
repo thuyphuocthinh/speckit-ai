@@ -78,13 +78,13 @@ Act as a strict Senior Architect. Check each created/modified file:
 
 #### 5e. Summary (all features)
 
-- Check off each Acceptance Criteria from the target specs, note Pass/Fail with reason
+- Check off each Acceptance Criteria from the target specs, note Pass/Fail with reason. Write each one as `AC-n` (for example `AC-3: Pass, upload over 5MB returns 400`): `done` refuses a review.md that does not mention every new or changed `AC-n` of the targets (all of them for a new feature; for a change to an existing feature, those that are new or differ from the current spec)
 - If Fail → describe the issue and how to fix it
-- Lessons Learned: note any insight or decision worth remembering
+- Lessons Learned: add a `### Lessons Learned` heading with bullets for any insight or decision worth remembering (write `None` if there is nothing). `done` saves this section to `specs/features/<slug>/lessons.md` so the next work on the feature can read it; keep each bullet self-contained
 
 ### Step 4 — Conclusion
 
 After writing review.md:
 - If all AC pass and no critical issues → report "✅ Ready for done"
 - If issues exist → list them clearly and fix them first
-- Suggest: "Run `npx speckit-ai lint` then `npx speckit-ai done` to finish" (`done` requires a non-empty review.md and fully checked tasks)
+- Suggest: "Run `npx speckit-ai lint` then `npx speckit-ai done` to finish" (`done` requires a review.md that mentions every new or changed `AC-n`, and fully checked tasks)

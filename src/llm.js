@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { MAX_DIFF_CHARS } = require('./gitdiff');
 
 /**
  * Quét cấu trúc dự án (chỉ thư mục root và cấp 1, đọc các file cấu hình).
@@ -174,7 +175,7 @@ Focus on: What is done? What is broken or incomplete? What should the next devel
 Return ONLY a markdown string, DO NOT wrap in JSON format for this request.
 
 Diff:
-${diff.substring(0, 15000)}`;
+${diff.substring(0, MAX_DIFF_CHARS)}`;
 
   try {
     // If using gemini/openai with JSON mode forced, we might get JSON back.
@@ -190,7 +191,37 @@ ${diff.substring(0, 15000)}`;
   }
 }
 
+function malformedReview(reason) {
+  return new Error(`Review response is malformed: ${reason}`);
+}
+
+/**
+ * Kiểm kết quả review của model và đưa về dạng chuẩn { success: boolean, errors: string[] }.
+ * Sai dạng thì ném lỗi; kết quả tự mâu thuẫn thì coi là không passed (fail-closed).
+ */
+function normalizeReview(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw malformedReview('expected a JSON object.');
+  }
+  if (typeof result.success !== 'boolean') {
+    throw malformedReview('"success" must be true or false.');
+  }
+  const errors = result.errors === undefined ? [] : result.errors;
+  if (!Array.isArray(errors) || errors.some((item) => typeof item !== 'string')) {
+    throw malformedReview('"errors" must be an array of strings.');
+  }
+
+  if (result.success && errors.length > 0) return { success: false, errors };
+  if (!result.success && errors.length === 0) {
+    return { success: false, errors: ['The reviewer rejected the change without giving a reason.'] };
+  }
+  return { success: result.success, errors };
+}
+
 async function reviewCode(specContent, agentsContent, diff, refContent) {
+  if (diff.length > MAX_DIFF_CHARS) {
+    throw new Error(`AI Review failed: the diff is ${diff.length} characters, over the ${MAX_DIFF_CHARS} limit. A review never truncates; split the diff first.`);
+  }
   const { apiKey, model } = await getApiKeyAndModel();
   const prompt = `You are a strict Senior Architect. Review the following code changes (Diff).
 You MUST check if it fulfills the Spec, follows the AGENTS Rules, and matches the Reference Code (if provided).
@@ -212,11 +243,11 @@ Reference Code:
 ${refContent}
 
 Diff:
-${diff.substring(0, 15000)}`;
+${diff}`;
 
   try {
     const rawResult = await callAI(prompt, model, apiKey);
-    return safeParseJson(rawResult);
+    return normalizeReview(safeParseJson(rawResult));
   } catch (err) {
     throw new Error(`AI Review failed: ${err.message}`);
   }

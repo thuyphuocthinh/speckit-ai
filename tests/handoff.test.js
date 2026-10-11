@@ -70,4 +70,64 @@ describe('Handoff Command', () => {
 
     await expect(handoff.execute(tmpDir)).rejects.toThrow('No tasks.md found');
   });
+
+  describe('AC-7: cùng nguồn diff với review', () => {
+    /** Section diff giả dài đúng `size` ký tự cho file `name`. */
+    function section(name, size) {
+      const header = `diff --git a/${name} b/${name}\n`;
+      return `${header}${'x'.repeat(size - header.length - 1)}\n`;
+    }
+
+    function mockGit(diff, untracked = '') {
+      child_process.execSync.mockImplementation((command) => (command.startsWith('git ls-files') ? untracked : diff));
+    }
+
+    beforeEach(() => {
+      write('specs/active/a/tasks.md', 'Tasks');
+      llm.generateHandoffSummary.mockResolvedValue('Summary');
+    });
+
+    it('diff dài hơn giới hạn thì khối Handoff Session có cảnh báo chỉ tóm tắt một phần', async () => {
+      mockGit(section('big.js', 20000));
+
+      await handoff.execute(tmpDir);
+
+      expect(fs.readFileSync(path.join(tmpDir, 'specs/active/a/tasks.md'), 'utf8')).toContain(
+        'Only the first 15000 of 20000 characters of the diff were summarized.'
+      );
+    });
+
+    it('diff trong giới hạn thì không có cảnh báo', async () => {
+      mockGit(section('small.js', 500));
+
+      await handoff.execute(tmpDir);
+
+      expect(fs.readFileSync(path.join(tmpDir, 'specs/active/a/tasks.md'), 'utf8')).not.toContain('Only the first');
+    });
+
+    it('lock file bị bỏ khỏi diff gửi đi, và nội dung file mới chưa track được gồm vào', async () => {
+      write('src/new.js', 'const brandNew = 1;\n');
+      mockGit(section('src/a.js', 200) + section('package-lock.json', 40000), 'src/new.js\0');
+
+      await handoff.execute(tmpDir);
+
+      const sent = llm.generateHandoffSummary.mock.calls[0][0];
+      expect(sent).not.toContain('package-lock.json');
+      expect(sent).toContain('diff --git a/src/a.js b/src/a.js');
+      expect(sent).toContain('+const brandNew = 1;');
+    });
+
+    it('chỉ có lock file thay đổi thì không có gì để handoff', async () => {
+      mockGit(section('yarn.lock', 500));
+
+      await expect(handoff.execute(tmpDir)).rejects.toThrow('No uncommitted changes found');
+      expect(llm.generateHandoffSummary).not.toHaveBeenCalled();
+    });
+
+    it('báo lỗi rõ nếu git lỗi', async () => {
+      child_process.execSync.mockImplementation(() => { throw new Error('fatal: not a git repository'); });
+
+      await expect(handoff.execute(tmpDir)).rejects.toThrow('Not a git repository or git command failed.');
+    });
+  });
 });

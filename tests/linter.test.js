@@ -89,6 +89,14 @@ describe('Spec Linter', () => {
     expect(lint(tmpDir)).toBe(true);
   });
 
+  test('AC-21: lessons.md của feature không bị chấm cấu trúc', () => {
+    write('specs/_template.md', SPEC_TEMPLATE);
+    write('specs/features/auth/spec.md', VALID_SPEC);
+    write('specs/features/auth/lessons.md', '# Lessons: auth\n\n## 2026-10-11 · token\n\n- a lesson\n');
+
+    expect(lint(tmpDir)).toBe(true);
+  });
+
   test('AC-1: chấm targets/*.md của việc đang làm, không chấm proposal/plan/tasks/review', () => {
     write('specs/_template.md', SPEC_TEMPLATE);
     write('specs/active/add-2fa/proposal.md', '# Proposal\n');

@@ -27,7 +27,8 @@ Create-ai-doc-cli/
 │   ├── done.js                    ← done: cổng kiểm tra, đóng gói, cất vào .history
 │   ├── generator.js               ← generate adr | contract | tests
 │   ├── linter.js                  ← lint spec và ADR theo template
-│   ├── handoff.js, reviewer.js    ← Lệnh handoff / review (dùng llm.js)
+│   ├── gitdiff.js                 ← Thu thập diff (cả file mới chưa track), chia theo file, bỏ lock file
+│   ├── handoff.js, reviewer.js    ← Lệnh handoff / review (dùng llm.js, gitdiff.js)
 │   ├── llm.js                     ← Gọi Gemini / OpenAI / Claude
 │   ├── server.js                  ← serve: xem docs trên web
 │   └── ui.js                      ← In thông báo có màu
@@ -70,7 +71,7 @@ specs/
 ├── _template.md  _workflow.md
 ├── ideas/<slug>.md                ← Backlog
 ├── active/<tên>/                  ← Việc đang làm (proposal, plan, tasks, review, targets/, decisions/, contracts/)
-├── features/<slug>/spec.md        ← Spec đã xong (+ decisions/, contracts/)
+├── features/<slug>/spec.md        ← Spec đã xong (+ lessons.md, decisions/, contracts/)
 ├── decisions/  contracts/         ← ADR / contract xuyên nhiều feature
 └── .history/<ngày>-<tên>/         ← File làm việc đã cất; AI không đọc
 ```

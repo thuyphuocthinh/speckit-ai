@@ -5,16 +5,22 @@
 
 ---
 
-## 📚 Required Reading Order
+## 📚 Reading Order
 
-Read in this order before starting any task:
+Read these first, for every task:
 
-1. `docs/README.md` — Required reading order
+1. `docs/README.md` — Reading order and the SDD workflow
 2. `docs/project-overview.md` — Goals, scope
 3. `docs/technology.md` — Stack, libraries, versions
-4. `docs/core-principles-and-coding-standards/structure.md` — Directory structure
-5. `docs/core-principles-and-coding-standards/coding-conventions.md` — Patterns, conventions
-6. `docs/core-principles-and-coding-standards/coding-style.md` — Lint, format
+
+Read the rest only when the task needs it (this keeps your context small):
+
+| When the task... | Read |
+|---|---|
+| creates, moves or renames files | `docs/core-principles-and-coding-standards/structure.md` — Directory structure |
+| writes or changes logic | `docs/core-principles-and-coding-standards/coding-conventions.md` — Patterns, conventions |
+| formats code or touches lint | `docs/core-principles-and-coding-standards/coding-style.md` — Lint, format |
+| is a specific recurring task | `docs/core-principles-and-coding-standards/instructions-and-work-flows/` — Step-by-step guides |
 
 ---
 
@@ -34,6 +40,7 @@ Read in this order before starting any task:
 - Framework: **{{FRAMEWORK}}**
 - Before starting a new feature or a spec change → run `npx speckit-ai start "<title>"` (add `--affects=<feature>` to change an existing feature) and write the spec first
 - Read `specs/_workflow.md` to understand the SDD cycle, the gates and how to handle hotfixes
+- Before changing an existing feature, read `specs/features/<slug>/lessons.md` if it exists (lessons from earlier work on it)
 - Before reporting a task as done → run `npx speckit-ai lint` and `npx speckit-ai done`
 - Never read or edit `specs/.history/` (archived work files)
 

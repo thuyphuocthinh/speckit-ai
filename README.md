@@ -197,7 +197,7 @@ your-project/
     ├── _workflow.md                   ← SDD cycle reference
     ├── ideas/                         ← Backlog: one small file per idea
     ├── active/                        ← Work in progress (created by `start`)
-    ├── features/                      ← Finished specs: features/<slug>/spec.md
+    ├── features/                      ← Finished specs: features/<slug>/spec.md (+ lessons.md)
     ├── decisions/                     ← Decision records (ADR) shared by several features
     └── contracts/                     ← Contracts shared by several features
 ```

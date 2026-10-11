@@ -127,6 +127,27 @@ describe('lifecycle.js', () => {
       expect(read('specs/features/auth/spec.md')).toBe('# Spec: Auth\nA\n');
     });
 
+    test('AC-22: --affects nhắc đọc lessons.md của feature nào có file đó, feature khác thì không', () => {
+      write('specs/_template.md', '# Spec: <Feature Name>\n\n## Overview\n');
+      write('specs/features/auth/spec.md', '# Spec: Auth\n');
+      write('specs/features/auth/lessons.md', '# Lessons: auth\n');
+      write('specs/features/order/spec.md', '# Spec: Order\n');
+
+      startWork('Change token', { affects: ['auth', 'order'] }, tmpDir);
+
+      const printed = console.log.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(printed).toContain(`Lessons from earlier work on "auth": ${path.join('specs', 'features', 'auth', 'lessons.md')}`);
+      expect(printed).not.toContain('Lessons from earlier work on "order"');
+    });
+
+    test('AC-22: feature mới không in nhắc nhở về bài học', () => {
+      write('specs/_template.md', '# Spec: <Feature Name>\n\n## Overview\n');
+
+      startWork('Brand new', {}, tmpDir);
+
+      expect(console.log.mock.calls.map((call) => call.join(' ')).join('\n')).not.toContain('Lessons from earlier work');
+    });
+
     test('AC-4: ý tưởng có Affects mà không truyền --affects thì dùng Affects của ý tưởng', () => {
       setupProject();
       write('specs/features/auth/spec.md', '# Spec: Auth\n');

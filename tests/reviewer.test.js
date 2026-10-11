@@ -4,6 +4,7 @@ const path = require('path');
 const child_process = require('child_process');
 const reviewer = require('../src/reviewer');
 const llm = require('../src/llm');
+const { MAX_DIFF_CHARS } = require('../src/gitdiff');
 
 jest.mock('child_process');
 jest.mock('../src/llm');
@@ -90,5 +91,85 @@ describe('Reviewer Command', () => {
     await reviewer.analyze(undefined, tmpDir, 'src/reference.js');
 
     expect(llm.reviewCode.mock.calls[0][3]).toBe('REFERENCE CODE');
+  });
+
+  describe('diff dài, file mới và lock file', () => {
+    /** Section diff giả dài đúng `size` ký tự cho file `name`. */
+    function section(name, size) {
+      const header = `diff --git a/${name} b/${name}\n`;
+      return `${header}${'x'.repeat(size - header.length - 1)}\n`;
+    }
+
+    /** Giả lập git: `git diff` trả `diff`, `git ls-files --others` trả `untracked`. */
+    function mockGit(diff, untracked = '') {
+      child_process.execSync.mockImplementation((command) => (command.startsWith('git ls-files') ? untracked : diff));
+    }
+
+    beforeEach(() => {
+      write('specs/active/a/targets/x.md', '# Spec: X\n');
+    });
+
+    it('AC-3: diff dài được chia theo file, gửi từng phần ≤ giới hạn và không mất ký tự nào', async () => {
+      const diff = section('a.js', 9000) + section('b.js', 9000) + section('c.js', 9000);
+      mockGit(diff);
+      llm.reviewCode.mockResolvedValue({ success: true, errors: [] });
+
+      const result = await reviewer.analyze(undefined, tmpDir);
+
+      const sent = llm.reviewCode.mock.calls.map((call) => call[2]);
+      expect(sent).toHaveLength(3);
+      expect(sent.every((chunk) => chunk.length <= MAX_DIFF_CHARS)).toBe(true);
+      expect(sent.join('')).toBe(diff);
+      expect(result).toEqual({ success: true, errors: [], skipped: [] });
+    });
+
+    it('AC-3: chỉ passed khi mọi phần passed, và gộp errors của các phần', async () => {
+      mockGit(section('a.js', 9000) + section('b.js', 9000) + section('c.js', 9000));
+      llm.reviewCode
+        .mockResolvedValueOnce({ success: true, errors: [] })
+        .mockResolvedValueOnce({ success: false, errors: ['b.js breaks AC-1'] })
+        .mockResolvedValueOnce({ success: false, errors: ['c.js breaks AC-2'] });
+
+      const result = await reviewer.analyze(undefined, tmpDir);
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toEqual(['b.js breaks AC-1', 'c.js breaks AC-2']);
+    });
+
+    it('AC-4: một file đơn lẻ quá giới hạn thì báo lỗi và không gọi model', async () => {
+      mockGit(section('small.js', 100) + section('generated.js', MAX_DIFF_CHARS + 500));
+
+      await expect(reviewer.analyze(undefined, tmpDir)).rejects.toThrow(/generated\.js is \d+ characters.*cannot be reviewed in one piece/);
+      expect(llm.reviewCode).not.toHaveBeenCalled();
+    });
+
+    it('AC-5: nội dung file mới chưa track được gửi đi review', async () => {
+      write('src/new.js', 'const brandNew = 1;\n');
+      mockGit('', 'src/new.js\0');
+      llm.reviewCode.mockResolvedValue({ success: true, errors: [] });
+
+      await reviewer.analyze(undefined, tmpDir);
+
+      const sent = llm.reviewCode.mock.calls[0][2];
+      expect(sent).toContain('diff --git a/src/new.js b/src/new.js');
+      expect(sent).toContain('+const brandNew = 1;');
+    });
+
+    it('AC-6: lock file không được gửi và được báo là skipped', async () => {
+      mockGit(section('src/a.js', 200) + section('package-lock.json', 40000));
+      llm.reviewCode.mockResolvedValue({ success: true, errors: [] });
+
+      const result = await reviewer.analyze(undefined, tmpDir);
+
+      expect(llm.reviewCode.mock.calls[0][2]).not.toContain('package-lock.json');
+      expect(result.skipped).toEqual(['package-lock.json']);
+    });
+
+    it('AC-6: chỉ có lock file thay đổi thì báo không có gì để review', async () => {
+      mockGit(section('yarn.lock', 500));
+
+      await expect(reviewer.analyze(undefined, tmpDir)).rejects.toThrow('No code changes to review (not reviewed: yarn.lock)');
+      expect(llm.reviewCode).not.toHaveBeenCalled();
+    });
   });
 });

@@ -14,12 +14,13 @@ const HTML_TAGS = new Set([
 /**
  * Bỏ các phần không phải nội dung viết tay: code block, comment HTML, inline code.
  */
-function stripNonProse(content) {
-  return content
+function stripNonProse(content, { keepInlineCode = false } = {}) {
+  const stripped = content
     .replace(/```[\s\S]*?```/g, '')
     .replace(/~~~[\s\S]*?~~~/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/`[^`\n]*`/g, '');
+    .replace(/<!--[\s\S]*?-->/g, '');
+  // keepInlineCode: giữ chữ trong dấu backtick (dùng cho câu mô tả đọc được), bỏ riêng ký tự backtick
+  return keepInlineCode ? stripped.replace(/`([^`\n]*)`/g, '$1') : stripped.replace(/`[^`\n]*`/g, '');
 }
 
 /**
@@ -51,6 +52,20 @@ function getSectionLines(content, title) {
   return lines.slice(start + 1, end);
 }
 
+/**
+ * Các tiêu chí `### AC-n: ...` của một spec: số n -> nội dung (đến heading `##` kế tiếp),
+ * đã chuẩn hóa kiểu xuống dòng và khoảng trắng đầu/cuối để so sánh giữa hai phiên bản.
+ */
+function extractAcBlocks(content) {
+  const blocks = new Map();
+  for (const part of content.split(/^(?=###\s+AC-\d+:)/m)) {
+    const match = part.match(/^###\s+AC-(\d+):/);
+    if (!match) continue;
+    blocks.set(Number(match[1]), part.split(/^##\s/m)[0].replace(/\r\n/g, '\n').trim());
+  }
+  return blocks;
+}
+
 function listMarkdown(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true })
@@ -67,7 +82,7 @@ function today() {
  * Dòng đầu có nghĩa của proposal (bỏ heading, metadata, comment, dòng placeholder).
  */
 function proposalSummary(proposal, fallback) {
-  const lines = stripNonProse(proposal).split(/\r?\n/);
+  const lines = stripNonProse(proposal, { keepInlineCode: true }).split(/\r?\n/);
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.startsWith('#') || line.startsWith('>')) continue;
@@ -87,6 +102,46 @@ function reviewTypes(review) {
     types.add(match[1].toLowerCase());
   }
   return types.size > 0 ? [...types].join(', ') : 'review.md';
+}
+
+/** Nội dung coi như "không có bài học nào". */
+const NO_LESSON = /^(none|n\/a|không có|-|—)\.?$/i;
+
+/**
+ * Phần nội dung dưới heading "Lessons Learned" (cấp 2 đến 4) của review.md, đến heading cùng cấp hoặc cao hơn kế tiếp.
+ * @returns {string} chuỗi rỗng nếu không có heading, không có nội dung, hoặc chỉ ghi "None" / "N/A" / "Không có"
+ */
+function extractLessons(review) {
+  const lines = review.split(/\r?\n/);
+  const start = lines.findIndex((line) => /^#{2,4}\s+.*lessons?\s+learned/i.test(line));
+  if (start === -1) return '';
+
+  const level = lines[start].match(/^#+/)[0].length;
+  const body = [];
+  let inFence = false;
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+    const heading = inFence ? null : line.match(/^(#{1,6})\s/);
+    if (heading && heading[1].length <= level) break;
+    body.push(line);
+  }
+
+  const text = body.join('\n').trim();
+  const meaningful = text.split('\n').map((line) => line.replace(/^\s*[-*]\s*/, '').trim()).filter(Boolean);
+  return meaningful.every((line) => NO_LESSON.test(line)) ? '' : text;
+}
+
+/**
+ * Thêm một mục bài học vào cuối lessons.md (tạo file kèm tiêu đề nếu chưa có), giữ kiểu xuống dòng của file có sẵn.
+ */
+function appendLessons(existing, slug, entryHeading, body) {
+  const eol = existing.includes('\r\n') ? '\r\n' : '\n';
+  const entry = `${entryHeading}\n\n${body}\n`.replace(/\r?\n/g, eol);
+  if (existing.trim() === '') {
+    const title = `# Lessons: ${slug}\n\n> Lessons learned from earlier work on this feature, added by \`speckit-ai done\`. Read them before changing the feature.\n\n`;
+    return title.replace(/\n/g, eol) + entry;
+  }
+  return `${existing.replace(/\s+$/, '')}${eol}${eol}${entry}`;
 }
 
 /**
@@ -166,6 +221,7 @@ function checkWork(targetDir, name) {
   const targetSlugs = Object.keys(work.targets);
   const targetsDir = path.join(dir, 'targets');
   const isBaseline = work.baseline === true;
+  const acNumbers = new Set(); // số n của các AC mới hoặc đã đổi: review.md phải nhắc tới
 
   if (isBaseline && targetSlugs.some((slug) => work.targets[slug] !== null)) {
     errors.push(error('baseline-invalid', 'A baseline work can only create new features, but work.json lists an existing feature as a target.', false));
@@ -219,6 +275,14 @@ function checkWork(targetDir, name) {
     } else if (sha256(featureSpec) !== baselineHash) {
       errors.push(error('baseline', `specs/features/${slug}/spec.md changed since this work started. Merge the change into targets/${slug}.md by hand, then use --force.`));
     }
+
+    // AC phải được review: mọi AC của feature mới; với feature sửa thì chỉ AC mới hoặc đã đổi so với bản hiện có
+    const original = baselineHash !== null && fs.existsSync(featureSpec)
+      ? extractAcBlocks(fs.readFileSync(featureSpec, 'utf8'))
+      : new Map();
+    for (const [number, text] of extractAcBlocks(content)) {
+      if (original.get(number) !== text) acNumbers.add(number);
+    }
   }
 
   // Một baseline chỉ ghi lại code đã có: không có task và không có code mới để review
@@ -243,8 +307,16 @@ function checkWork(targetDir, name) {
   }
 
   const reviewFile = path.join(dir, 'review.md');
-  if (!isBaseline && (!fs.existsSync(reviewFile) || fs.readFileSync(reviewFile, 'utf8').trim() === '')) {
+  const reviewText = fs.existsSync(reviewFile) ? fs.readFileSync(reviewFile, 'utf8') : '';
+  if (!isBaseline && reviewText.trim() === '') {
     errors.push(error('review', 'review.md is missing or empty.'));
+  } else if (!isBaseline) {
+    const unmentioned = [...acNumbers]
+      .sort((a, b) => a - b)
+      .filter((n) => !new RegExp(`\\bAC-${n}\\b`, 'i').test(reviewText));
+    if (unmentioned.length > 0) {
+      errors.push(error('review-ac', `review.md does not mention: ${unmentioned.map((n) => `AC-${n}`).join(', ')}. Check off every acceptance criterion there (Pass/Fail with a reason).`));
+    }
   }
 
   // ADR/contract sẽ được chuyển đi: contract không được ghi đè file đã có
@@ -263,7 +335,7 @@ function checkWork(targetDir, name) {
  * rồi cất thư mục việc vào specs/.history/. Kiểm tra xong mới ghi; sai thì không đổi gì.
  * @param {string} targetDir
  * @param {{ name?: string, force?: boolean }} [options]
- * @returns {{ name: string, features: string[], historyDir: string, skipped: string[] }}
+ * @returns {{ name: string, features: string[], historyDir: string, skipped: string[], lessons: string[] }} lessons: các feature vừa nhận bài học
  */
 function finishWork(targetDir, { name, force = false } = {}) {
   const { name: workName, dir, errors } = checkWork(targetDir, name);
@@ -305,6 +377,14 @@ function finishWork(targetDir, { name, force = false } = {}) {
     content: appendChangelog(fs.readFileSync(path.join(dir, 'targets', `${slug}.md`), 'utf8'), changelogLine),
   }));
 
+  // Bài học của việc được thêm vào lessons.md của từng feature, để agent ở lần sau còn đọc được (.history/ thì không)
+  const lessons = work.baseline === true ? '' : extractLessons(review);
+  const lessonWrites = lessons === '' ? [] : targetSlugs.map((slug) => {
+    const dest = path.join(paths.features, slug, 'lessons.md');
+    const existing = fs.existsSync(dest) ? fs.readFileSync(dest, 'utf8') : '';
+    return { slug, dest, content: appendLessons(existing, slug, `## ${date} · ${workName}`, lessons) };
+  });
+
   // ADR: đánh số lại theo thư mục đích; contract: giữ tên file
   const moves = [];
   const nextNumber = new Map();
@@ -326,6 +406,7 @@ function finishWork(targetDir, { name, force = false } = {}) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, content, 'utf8');
   }
+  for (const { dest, content } of lessonWrites) fs.writeFileSync(dest, content, 'utf8');
   for (const { from, to } of moves) {
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.renameSync(from, to);
@@ -337,12 +418,15 @@ function finishWork(targetDir, { name, force = false } = {}) {
   for (const slug of targetSlugs) {
     console.log(`[speckit-ai]   → specs/features/${slug}/spec.md`);
   }
+  for (const { slug } of lessonWrites) {
+    console.log(`[speckit-ai]   → specs/features/${slug}/lessons.md (lessons learned)`);
+  }
   console.log(`[speckit-ai]   → work files kept in ${path.relative(targetDir, historyDir)}`);
   if (skipped.length > 0) {
     console.log(`[speckit-ai] ⚠️  Bypassed with --force: ${skipped.join(', ')}`);
   }
 
-  return { name: workName, features: targetSlugs, historyDir, skipped };
+  return { name: workName, features: targetSlugs, historyDir, skipped, lessons: lessonWrites.map((write) => write.slug) };
 }
 
-module.exports = { checkWork, finishWork, findPlaceholders };
+module.exports = { checkWork, finishWork, findPlaceholders, extractLessons };

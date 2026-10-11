@@ -234,7 +234,7 @@ describe('cli.js', () => {
       expect(exists('specs/active/refund/decisions/0001-use-saga.md')).toBe(true);
 
       write('specs/active/refund/tasks.md', '# Tasks\n\n## Phase 4: Tests\n\n- [x] Add tests\n');
-      write('specs/active/refund/review.md', '# Review\n\n## 5a. Code Review\n\nOK\n');
+      write('specs/active/refund/review.md', '# Review\n\n## 5a. Code Review\n\nOK\n\n## 5e. Summary\n\n- AC-1: Pass\n');
 
       // Spec đã điền đầy đủ và ADR sinh từ template đều qua lint
       expect(await run(['lint'], tmpDir)).toBe(0);
@@ -245,7 +245,7 @@ describe('cli.js', () => {
       await run(['start', 'Refund'], tmpDir);
       write('specs/active/refund/targets/refund.md', SPEC);
       write('specs/active/refund/tasks.md', '# Tasks\n\n## Phase 4: Tests\n\n- [x] Add tests\n');
-      write('specs/active/refund/review.md', '# Review\n\n## 5a. Code Review\n\nOK\n');
+      write('specs/active/refund/review.md', '# Review\n\n## 5a. Code Review\n\nOK\n\n## 5e. Summary\n\n- AC-1: Pass\n');
       await run(['generate', 'adr', 'Use saga'], tmpDir);
 
       expect(await run(['done'], tmpDir)).toBe(0);
@@ -297,6 +297,38 @@ describe('cli.js', () => {
 
       expect(await run(['start', 'Feature A'], tmpDir)).toBe(1);
       expect(output()).toContain('Active work already exists: feature-a');
+    });
+  });
+
+  describe('review: không bao giờ báo passed khi chưa kiểm đủ', () => {
+    const reviewer = require('../src/reviewer');
+
+    test('passed thì exit 0 và cảnh báo các file không được review', async () => {
+      jest.spyOn(reviewer, 'analyze').mockResolvedValue({ success: true, errors: [], skipped: ['package-lock.json'] });
+
+      expect(await run(['review'], tmpDir)).toBe(0);
+
+      expect(output()).toContain('REVIEW PASSED');
+      expect(console.warn.mock.calls.flat().join(' ')).toContain('Not reviewed (lock files): package-lock.json');
+    });
+
+    test('failed thì exit 1 và liệt kê lỗi', async () => {
+      jest.spyOn(reviewer, 'analyze').mockResolvedValue({ success: false, errors: ['breaks AC-1'], skipped: [] });
+
+      expect(await run(['review'], tmpDir)).toBe(1);
+
+      expect(output()).toContain('REVIEW FAILED');
+      expect(output()).toContain('breaks AC-1');
+      expect(output()).not.toContain('REVIEW PASSED');
+    });
+
+    test('AC-1/AC-4: review không thực hiện được (kết quả sai dạng, file quá lớn) thì exit 1, không passed', async () => {
+      jest.spyOn(reviewer, 'analyze').mockRejectedValue(new Error('AI Review failed: Review response is malformed: "success" must be true or false.'));
+
+      expect(await run(['review'], tmpDir)).toBe(1);
+
+      expect(output()).toContain('Review response is malformed');
+      expect(output()).not.toContain('REVIEW PASSED');
     });
   });
 });

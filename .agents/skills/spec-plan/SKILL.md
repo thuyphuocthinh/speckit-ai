@@ -18,7 +18,7 @@ Trigger phrases:
 
 ### Step 1 — Read the spec
 
-Read every file in `specs/active/<name>/targets/` and `proposal.md` (if several works are active, ask which one). If there are unresolved Open Questions → notify the user and do not create a plan until they are resolved.
+Read every file in `specs/active/<name>/targets/` and `proposal.md` (if several works are active, ask which one), and `specs/features/<slug>/lessons.md` of each affected feature if it exists. If there are unresolved Open Questions → notify the user and do not create a plan until they are resolved.
 
 ### Step 2 — Technical analysis
 

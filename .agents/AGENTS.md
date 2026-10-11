@@ -14,13 +14,20 @@
 
 ---
 
-## 📚 Tài liệu bắt buộc đọc theo thứ tự
+## 📚 Thứ tự đọc tài liệu
 
-1. `docs/README.md` — Required reading order
+Luôn đọc trước, với mọi task:
+
+1. `docs/README.md` — Thứ tự đọc và quy trình SDD
 2. `docs/project-overview.md` — Mục tiêu, phạm vi
 3. `docs/technology.md` — Stack, thư viện
-4. `docs/core-principles-and-coding-standards/structure.md` — Cấu trúc thư mục
-5. `docs/core-principles-and-coding-standards/coding-conventions.md` — Pattern
+
+Chỉ đọc phần còn lại khi task cần (để giữ context nhỏ):
+
+| Khi task... | Đọc |
+|---|---|
+| tạo, di chuyển hoặc đổi tên file | `docs/core-principles-and-coding-standards/structure.md` — Cấu trúc thư mục |
+| viết hoặc sửa logic | `docs/core-principles-and-coding-standards/coding-conventions.md` — Pattern |
 
 ---
 
@@ -48,4 +55,5 @@
 
 - Feature hoặc thay đổi spec → dùng chính flow của tool: `npx speckit-ai start "<tên>"`, viết spec trong `specs/active/<tên>/targets/`, xong chạy `npx speckit-ai lint` và `npx speckit-ai done`
 - Đọc `specs/_workflow.md` để biết các cổng kiểm tra và cách xử lý hotfix
+- Trước khi sửa một feature đã có (`--affects`), đọc `specs/features/<slug>/lessons.md` nếu có: đó là bài học của các lần làm trước (`done` ghi vào từ mục Lessons Learned của `review.md`)
 - Không đọc hoặc sửa `specs/.history/`

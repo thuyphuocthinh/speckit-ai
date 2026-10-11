@@ -253,6 +253,9 @@ async function dispatch(argv, targetDir) {
       ui.printInfo(`Running speckit-ai review${text ? ` for "${text}"` : ''}...`);
       ui.printStep('Sending Spec and Code Diff to AI for review...');
       const result = await reviewer.analyze(text || undefined, targetDir, referenceFile);
+      if (result.skipped && result.skipped.length > 0) {
+        ui.printWarning(`Not reviewed (lock files): ${result.skipped.join(', ')}`);
+      }
       if (result.success) {
         ui.printSuccess('REVIEW PASSED! Code matches specs and SOLID principles.');
         return 0;

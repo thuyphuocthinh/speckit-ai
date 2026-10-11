@@ -89,6 +89,7 @@ work.json              fingerprints (sha256) of the original specs. Do not edit.
 ```
 
 - Several works can be active at the same time. The same name twice is refused.
+- With `--affects`, for every affected feature that has a `specs/features/<feature>/lessons.md` the command prints its path: read it before editing the spec (see `done`).
 - Nothing is created if any check fails.
 
 | Error | Meaning |
@@ -128,6 +129,7 @@ Finishes a work. It runs **all** checks first and writes nothing unless every on
 | `Decisions` / `Contracts` references exist | `> **Decisions**: 0003` → `specs/decisions/0003-*.md`; `> **Contracts**: auth-api` → `specs/contracts/auth-api.md` |
 | `tasks.md` has a Tests phase and every task is checked (`## 🔄 Handoff Session` blocks are ignored) | Tick or remove tasks; keep a `## Phase 4: Tests` |
 | `review.md` exists and is not empty | Write the review |
+| `review.md` mentions every new or changed `AC-n` of the targets: all of them for a new feature; for a change to an existing feature, those that are new or differ from the current spec (case-insensitive; `AC-1` is not satisfied by `AC-10`) | Add a line per acceptance criterion, for example `AC-3: Pass, ...`. This only proves no criterion was skipped; it does not judge Pass or Fail |
 | The specs you are replacing were **not changed** since `start` (sha256) | Merge the other change into your `targets/<feature>.md`, then `--force` |
 
 When everything passes:
@@ -140,7 +142,8 @@ When everything passes:
 
 1. Each `targets/<feature>.md` becomes `specs/features/<feature>/spec.md`, with one line appended to its `## Changelog`.
 2. ADRs and contracts of the work move next to the feature (work with one target) or to `specs/decisions/`, `specs/contracts/` (several targets). ADRs are renumbered in their new folder.
-3. The work folder is **moved** (not deleted) to `specs/.history/<date>-<name>/`. Delete it whenever you like.
+3. The `### Lessons Learned` section of `review.md` (if it has real content, not just `None`) is appended to `specs/features/<feature>/lessons.md` of every feature the work touched, under a `## <date> · <name>` heading. `.history/` is hidden from the AI, so this is how the lessons stay readable. `start --affects=<feature>` prints the path of that file when it exists.
+4. The work folder is **moved** (not deleted) to `specs/.history/<date>-<name>/`. Delete it whenever you like.
 
 For a work started with `--baseline`, the `tasks.md` and `review.md` checks do not apply.
 
@@ -160,6 +163,7 @@ Example when checks fail:
   - targets/auth.md: unfilled placeholder(s): <role>, <action>, <benefit>, <Short name>
   - tasks.md has no completed tasks.
   - review.md is missing or empty.
+  - review.md does not mention: AC-1, AC-2. Check off every acceptance criterion there (Pass/Fail with a reason).
 Use --force to bypass these checks (recorded in the Changelog).
 ```
 
@@ -234,17 +238,24 @@ Checks **structure only** (this is what the pre-commit hook runs):
 
 ## `handoff [<name>]`
 
-Runs `git diff` (plus the list of untracked files), asks an LLM to summarize what is done and what is left, and appends the summary as a `## 🔄 Handoff Session` block to the work's `tasks.md`. A fresh AI chat can pick the work up from there. Needs an API key (see the scaffold section). Only the first 15,000 characters of the diff are sent.
+Collects every uncommitted change (staged, unstaged, and the content of new files git does not track yet; lock files such as `package-lock.json` are left out), asks an LLM to summarize what is done and what is left, and appends the summary as a `## 🔄 Handoff Session` block to the work's `tasks.md`. A fresh AI chat can pick the work up from there. Needs an API key (see the scaffold section). Only the first 15,000 characters of the diff are sent; when the diff is longer, the block ends with a warning that says how much was summarized.
 
 Errors: `No active work found ...`, `No uncommitted changes found. Nothing to handoff.`, `API Key is missing ...`.
 
 ## `review [<name>] [--ref=<path>]`
 
-Sends the work's `targets/*.md`, `.agents/AGENTS.md` and your `git diff HEAD` (plus the optional reference file) to an LLM that acts as a strict reviewer. Exit code `0` = passed, `1` = violations (listed). Because of the exit code you can use it in CI. Needs an API key.
+Sends the work's `targets/*.md`, `.agents/AGENTS.md` and your uncommitted changes (staged, unstaged, and the content of new untracked files; plus the optional reference file) to an LLM that acts as a strict reviewer. Exit code `0` = passed, `1` = violations (listed) or the review could not be completed. Because of the exit code you can use it in CI. Needs an API key.
 
 `--ref=<path>` is a file of your project that shows the style to follow (path from the project root).
 
-Errors: `No target specs found ...`, `No code changes to review.`, `API Key is missing ...`.
+A review never passes on data it has not fully seen:
+
+- A diff longer than 15,000 characters is split **by file** and each part is reviewed separately; the result is *passed* only if every part passed, and the violations of all parts are listed.
+- If the diff of a single file is over 15,000 characters, the command stops with exit code `1` and names the file (review it by hand, or split the change).
+- Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `go.sum`, `Cargo.lock`, ...) are not sent; a warning lists them.
+- An answer of the model that has the wrong shape (for example `"success": "false"` as text) is rejected, and an answer that says `success: true` but lists violations counts as failed.
+
+Errors: `No target specs found ...`, `No code changes to review.`, `The diff of <file> is N characters, over the 15000 limit ...`, `AI Review failed: Review response is malformed ...`, `API Key is missing ...`.
 
 ## `serve`
 

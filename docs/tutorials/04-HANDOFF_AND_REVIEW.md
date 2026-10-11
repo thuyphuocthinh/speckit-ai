@@ -20,7 +20,7 @@ npx speckit-ai handoff
 
 ### What happens under the hood?
 1. The CLI finds your active work in `specs/active/` (if several works are active, pass its name: `npx speckit-ai handoff <name>`).
-2. It runs `git diff` to capture all your uncommitted work.
+2. It collects all your uncommitted work: staged and unstaged changes, plus the content of new files git does not track yet (lock files are left out).
 3. It sends this diff to an LLM to generate a clear, human-readable summary of exactly what has been done and what is left to do.
 4. It appends this summary directly to the bottom of your `tasks.md` file.
 
@@ -47,13 +47,14 @@ npx speckit-ai review --ref="src/modules/core/reference.ts"
 ### What happens under the hood?
 1. **Fresh Context:** The CLI spawns a completely isolated API request to the LLM.
 2. **Strict Architect Persona:** The AI acts as a Senior Architect, totally unbiased.
-3. **The Audit:** It compares your `git diff` against:
+3. **The Audit:** It compares your uncommitted changes (including new files not yet tracked) against:
    - The Acceptance Criteria in the spec(s) under `targets/` of your active work.
    - The Clean Code / SOLID rules in your `.agents/AGENTS.md`.
    - The architectural patterns in your `--ref` file.
 4. **The Verdict:** 
    - If perfect: Returns `exit(0)` and prints a green success message.
    - If flawed: Prints the exact violations and returns `exit(1)`.
+   - If the review could not be completed (for example the diff of one file is over 15,000 characters, or the model's answer has the wrong shape): returns `exit(1)`. A review never passes on changes it has not fully seen. A long diff is split by file and reviewed in parts; the result is *passed* only if every part passed.
 
 ### CI/CD Integration
 Because it returns standard exit codes (`0` or `1`), you can run `npx speckit-ai review` directly in your GitHub Actions, Husky pre-push hooks, or GitLab CI pipelines. If the AI detects a SOLID violation or missed AC, it will block the Pull Request from being merged!

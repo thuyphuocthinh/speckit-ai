@@ -216,6 +216,12 @@ function startWork(input, { affects = [], baseline = false } = {}, targetDir = p
   if (idea) fs.unlinkSync(ideaFile);
 
   console.log(`[speckit-ai] ✅ Started: ${path.relative(targetDir, workDir)}`);
+  for (const slug of affected) {
+    const lessonsFile = path.join(paths.features, slug, 'lessons.md');
+    if (fs.existsSync(lessonsFile)) {
+      console.log(`[speckit-ai] 📝 Lessons from earlier work on "${slug}": ${path.relative(targetDir, lessonsFile)} (read them before editing the spec)`);
+    }
+  }
   if (baseline) {
     console.log('[speckit-ai] 👉 Describe the CURRENT behavior of the code in targets/*.md. Finish with: speckit-ai done');
   } else {

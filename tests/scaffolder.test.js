@@ -214,6 +214,28 @@ describe('scaffold()', () => {
     }
   });
 
+  test('AC-20: _workflow.md và skill spec-review nói review.md phải nhắc tới mọi AC-n', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const read = (...p) => fs.readFileSync(path.join(tmpDir, ...p), 'utf8');
+
+    expect(read('specs', '_workflow.md')).toContain('`review.md` exists and mentions every new or changed `AC-n` of the targets');
+    expect(read('.agents', 'skills', 'spec-review', 'SKILL.md')).toContain('does not mention every new or changed `AC-n` of the targets');
+  });
+
+  test('AC-21/22: workflow, skill, AGENTS.md nói về lessons.md và mục Lessons Learned', () => {
+    scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework: 'nestjs', packageManager: 'npm' } });
+    const read = (...p) => fs.readFileSync(path.join(tmpDir, ...p), 'utf8');
+
+    const workflow = read('specs', '_workflow.md');
+    expect(workflow).toContain('lessons.md          ← Lessons learned from past work');
+    expect(workflow).toContain('### Lessons Learned');
+    expect(workflow).toContain('read `specs/features/<slug>/lessons.md` if it exists');
+    expect(read('.agents', 'skills', 'spec-review', 'SKILL.md')).toContain('### Lessons Learned');
+    expect(read('.agents', 'skills', 'spec-create', 'SKILL.md')).toContain('lessons.md');
+    expect(read('.agents', 'skills', 'spec-plan', 'SKILL.md')).toContain('lessons.md');
+    expect(read('.agents', 'AGENTS.md')).toContain('specs/features/<slug>/lessons.md');
+  });
+
   test('monorepo: specs/ chỉ tạo một lần ở root, không lặp theo sub-project', () => {
     scaffold({
       targetDir: tmpDir,
@@ -225,6 +247,54 @@ describe('scaffold()', () => {
     });
     expect(fs.existsSync(path.join(tmpDir, 'specs', 'decisions', '0000-template.md'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'docs', 'api', 'adrs'))).toBe(false);
+  });
+
+  describe('AGENTS.md: Reading Order theo tầng', () => {
+    const ON_DEMAND = [
+      ['structure.md', 'creates, moves or renames files'],
+      ['coding-conventions.md', 'writes or changes logic'],
+      ['coding-style.md', 'formats code or touches lint'],
+      ['instructions-and-work-flows/', 'is a specific recurring task'],
+    ];
+    const ALWAYS = ['docs/README.md', 'docs/project-overview.md', 'docs/technology.md'];
+
+    test.each([
+      ['nestjs', 'new'],
+      ['generic', 'new'],
+      ['python-django', 'new'],
+      ['vue', 'existing'],
+    ])('AC-1/AC-2/AC-3: %s (mode=%s) có tầng luôn đọc và tầng đọc khi cần, nhất quán với docs/README.md', (framework, mode) => {
+      scaffold({ targetDir: tmpDir, projectConfig: { type: 'single', framework, packageManager: 'npm' }, mode });
+      const agents = fs.readFileSync(path.join(tmpDir, '.agents', 'AGENTS.md'), 'utf8');
+      const readme = fs.readFileSync(path.join(tmpDir, 'docs', 'README.md'), 'utf8');
+
+      const section = agents.split('## 📚 Reading Order')[1].split('\n---')[0];
+      const [always, onDemand] = section.split('Read the rest only when the task needs it');
+
+      // AC-1: tầng luôn đọc
+      for (const file of ALWAYS) expect(always).toContain(file);
+      // AC-1: tầng đọc khi cần, mỗi file kèm điều kiện; và không lẫn vào tầng luôn đọc
+      for (const [file, when] of ON_DEMAND) {
+        const row = onDemand.split('\n').find((line) => line.includes(file));
+        expect(row).toBeDefined();
+        expect(row).toContain(`| ${when} |`);
+        expect(always).not.toContain(file);
+      }
+
+      // AC-2: không còn bắt đọc đủ sáu file theo thứ tự cho mọi task
+      expect(agents).not.toContain('Read in this order before starting any task');
+      expect(always).not.toMatch(/^[4-6]\. /m);
+
+      // AC-3: docs/README.md xếp cùng file vào cùng tầng
+      const readmeRow = (file) => readme.split('\n').find((line) => line.includes(file));
+      for (const file of ['docs/project-overview.md', 'docs/technology.md']) {
+        expect(readmeRow(file)).toContain('Always');
+      }
+      for (const [file] of ON_DEMAND) {
+        expect(readmeRow(file)).toBeDefined();
+        expect(readmeRow(file)).not.toContain('Always');
+      }
+    });
   });
 
   test('AGENTS.md chứa tên framework đã render', () => {

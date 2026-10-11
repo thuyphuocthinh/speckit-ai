@@ -33,6 +33,7 @@ specs/
 │   └── work.json           ← Baseline hashes (written by `start`, do not edit)
 ├── features/<slug>/        ← Finished features (the source of truth)
 │   ├── spec.md             ← Ends with a ## Changelog
+│   ├── lessons.md          ← Lessons learned from past work (appended by `done`)
 │   └── decisions/  contracts/
 ├── decisions/              ← ADRs that affect several features or the whole project
 ├── contracts/              ← Contracts shared by several features
@@ -56,7 +57,7 @@ specs/
 | `speckit-ai generate adr "<Title>"` | New decision record |
 | `speckit-ai generate contract "<Title>"` | New API/data contract |
 | `speckit-ai generate tests` | Test skeleton from the `### AC-n:` headings of the active work |
-| `speckit-ai done` | Run the gates, write specs to `specs/features/`, archive the work files |
+| `speckit-ai done` | Run the gates, write specs to `specs/features/`, save the Lessons Learned of `review.md` in each feature's `lessons.md`, archive the work files |
 
 With several active works, pass the work name (`done <name>`, `generate adr "<Title>" --work=<name>`).
 
@@ -116,8 +117,8 @@ AI checks everything before reporting done. Sections depend on feature type:
 - Response time meets spec requirements?
 
 #### 5e. Summary (all features)
-- All Acceptance Criteria checked off?
-- Lessons Learned — note anything worth remembering
+- All Acceptance Criteria checked off? Write each as `AC-n` with Pass/Fail and a reason; `done` refuses a `review.md` that does not mention every new or changed `AC-n` of the targets
+- A `### Lessons Learned` heading with bullets (write `None` if there is nothing). `done` saves it to `specs/features/<slug>/lessons.md`, so the next work on the feature can read it
 
 ---
 
@@ -142,7 +143,7 @@ Contracts follow the same rules (`contracts/`). To reference a shared decision o
 - `done` checks content, and writes nothing if any check fails:
   - no unchecked `- [ ]` under Open Questions
   - at least one `### AC-n:` criterion, and no unfilled `<placeholder>`
-  - `tasks.md` fully checked and has a Tests phase; `review.md` exists
+  - `tasks.md` fully checked and has a Tests phase; `review.md` exists and mentions every new or changed `AC-n` of the targets
   - referenced decisions/contracts exist
   - the specs you changed were not modified by someone else since `start` (hash check)
 - A work started with `--baseline` skips the `tasks.md` and `review.md` checks (there is no new code); every check on the spec itself still applies. Its Changelog line says `baseline (từ code hiện có)`.
@@ -169,6 +170,7 @@ merge your change into that work's `targets/<feature>.md`, then `done --force`.
 ## Rules
 
 - Do not implement if a target spec has unresolved open questions
+- Before changing an existing feature (`--affects`), read `specs/features/<slug>/lessons.md` if it exists (`start` prints its path)
 - Do not report done without a `review.md`, and run `npx speckit-ai done` (it is the source of truth for "done")
 - Run `npx speckit-ai lint` before reporting a spec change as finished
 - Never read or edit `specs/.history/` — it holds old work files that may contradict the current specs

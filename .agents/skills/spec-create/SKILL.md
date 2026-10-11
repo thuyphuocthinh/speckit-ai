@@ -57,6 +57,8 @@ npx speckit-ai start "<title>" --baseline               # write the spec of code
 
 This creates `specs/active/<name>/` with `proposal.md`, `tasks.md` and `targets/`. For existing features, `targets/` holds a copy of each spec to edit. Never edit `specs/features/*/spec.md` directly for a real change.
 
+When you used `--affects`, `start` prints the path of `specs/features/<slug>/lessons.md` for each affected feature that has one: read it before editing the spec.
+
 Use `--baseline` when the code already exists and the user only wants its spec: read the code, describe its **current** behavior in `targets/<feature>.md` (no tasks, plan or review are needed), then run `done`. `--baseline` cannot be combined with `--affects`.
 
 ### Step 4 — Write the spec in `targets/<feature>.md`

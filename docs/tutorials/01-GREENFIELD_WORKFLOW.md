@@ -88,7 +88,7 @@ Implement the tasks and tick them off. Record architecture decisions as you go:
 npx speckit-ai generate adr "Use signed tokens for email verification"
 ```
 
-While a work is active, the decision is stored in the work and moved next to the feature when you finish. Then ask the AI for `review.md` (the `spec-review` skill), or run the independent `npx speckit-ai review` (see tutorial 4).
+While a work is active, the decision is stored in the work and moved next to the feature when you finish. Then ask the AI for `review.md` (the `spec-review` skill; it must mention every new or changed `AC-n` of the spec, or `done` refuses), or run the independent `npx speckit-ai review` (see tutorial 4).
 
 ## Step 6: Done
 
@@ -123,4 +123,4 @@ The Changelog line, written by `done`, looks like:
 - 2026-10-01 · user-registration-flow · Let new users register with email and password · review: code, test · chi tiết: .history/2026-10-01-user-registration-flow
 ```
 
-`specs/features/<slug>/spec.md` never moves again, so you can always refer to it by that path. You can delete `specs/.history/` whenever you like — the Changelog line stays meaningful without it.
+If your `review.md` has a `### Lessons Learned` section, `done` also appends it to `specs/features/<slug>/lessons.md`; the next work on that feature gets a reminder to read it. `specs/features/<slug>/spec.md` never moves again, so you can always refer to it by that path. You can delete `specs/.history/` whenever you like — the Changelog line stays meaningful without it.
