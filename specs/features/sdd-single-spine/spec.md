@@ -137,6 +137,11 @@ Given feature `auth` có `specs/features/auth/lessons.md`
 When chạy `speckit-ai start "Add 2FA" --affects=auth`
 Then sau khi tạo việc, in một dòng cho mỗi feature bị ảnh hưởng có `lessons.md`, nêu đường dẫn và dặn đọc trước khi sửa spec; feature không có `lessons.md`, và việc tạo feature mới, không in thêm gì. `_workflow.md` và các skill `spec-create`, `spec-plan` dặn agent đọc file này khi sửa feature có sẵn.
 
+### AC-23: done --check chạy mọi cổng mà không ghi gì
+Given một việc đang làm (hoặc nhiều việc, nêu tên việc cần kiểm)
+When chạy `speckit-ai done [<tên>] --check`
+Then chạy đúng các cổng như `done` (AC-7, AC-20, ...) nhưng không ghi, di chuyển hay xóa gì: không có lỗi thì in `All gates pass for "<tên>" (nothing was written)` và exit 0; có lỗi thì in mọi lý do (đánh dấu những lý do mà `--force` không bỏ qua được) rồi exit 1; cây thư mục trước và sau y hệt nhau. `--check` kết hợp với `--force` hoặc kèm giá trị (`--check=x`) bị từ chối với exit 1; không có việc nào đang làm hoặc có nhiều việc mà không nêu tên thì báo lỗi như `done`. `--help` nhắc `--check`; `_workflow.md`, `AGENTS.md` và tài liệu CLI mô tả nó.
+
 ## Technical Constraints
 
 - Không thêm dependency mới; metadata dùng dòng `> **Key**: value` (quy ước của contract template), không YAML front-matter.
@@ -163,3 +168,4 @@ Không còn câu hỏi mở.
 <!-- Lines are appended by `speckit-ai done`. -->
 - 2026-10-11 · done-review-covers-ac · Cổng review của done chỉ kiểm review.md tồn tại và không rỗng, nên một dòng chữ bất kỳ cũng qua được. Review tự thực ... · review: code, test · chi tiết: .history/2026-10-11-done-review-covers-ac
 - 2026-10-11 · lessons-loop · Mỗi lần làm xong, review.md có mục Lessons Learned, nhưng done cất cả thư mục việc vào specs/.history/, nơi agent đượ... · review: code, test · chi tiết: .history/2026-10-11-lessons-loop
+- 2026-10-11 · done-check · Cách duy nhất để biết một việc đã qua các cổng của done chưa là chạy done thật. Nếu qua, nó ghi spec và cất việc vào ... · review: code, test · chi tiết: .history/2026-10-11-done-check

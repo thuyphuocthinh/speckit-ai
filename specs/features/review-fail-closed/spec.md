@@ -59,6 +59,11 @@ Given `handoff` chạy khi diff dài hơn 15000 ký tự
 When tóm tắt được ghi vào `tasks.md`
 Then diff lấy bằng cùng hàm thu thập như `review` (lock file bị bỏ qua), và khối `Handoff Session` có thêm dòng cảnh báo cho biết chỉ 15000 trên tổng số ký tự được tóm tắt.
 
+### AC-8: review chỉ gửi AC mới hoặc đã đổi của feature đang sửa
+Given một target sửa feature có sẵn (có `specs/features/<slug>/spec.md`), trong đó có AC không đổi so với bản đó (so sau khi chuẩn hóa kiểu xuống dòng và khoảng trắng đầu/cuối)
+When chạy `review`
+Then phần spec gửi cho model giữ nguyên các mục khác của spec (Overview, Technical Constraints, Out of Scope...) và mọi AC mới hoặc đã đổi, còn mỗi AC không đổi chỉ còn dòng tiêu đề kèm chú thích `(unchanged, omitted)` thay cho nội dung. Target là feature mới (chưa có `specs/features/<slug>/spec.md`) được gửi nguyên văn. Cùng một phần spec đã rút gọn này được dùng cho mọi phần diff.
+
 ## Technical Constraints
 
 - Không thêm dependency; dùng `child_process.execSync` như code hiện tại.
@@ -66,6 +71,7 @@ Then diff lấy bằng cùng hàm thu thập như `review` (lock file bị bỏ 
 - Hằng số giới hạn 15000 ký tự dùng chung (`MAX_DIFF_CHARS`), không còn con số nằm rải rác.
 - Việc kiểm kết quả nằm ở ranh giới nhận dữ liệu của model (`llm.js`), code gọi `reviewCode` chỉ thấy kết quả đã hợp lệ.
 - Review tuần tự từng phần (không gọi song song) để tránh vượt giới hạn tốc độ của API.
+- Việc tách và so sánh AC dùng chung một hàm với `done` (`src/features.js`), để "AC đã đổi" chỉ có một cách hiểu.
 
 ## Out of Scope
 
@@ -82,3 +88,4 @@ Không còn câu hỏi mở.
 
 <!-- Lines are appended by `speckit-ai done`. Do not edit by hand. -->
 - 2026-10-11 · review-fail-closed · speckit-ai review là một Sensor: nó phải cho biết code có khớp spec hay không. Hiện nay nó có thể báo "passed" trong ... · review: code, test · chi tiết: .history/2026-10-11-review-fail-closed
+- 2026-10-11 · review-sends-changed-acs · Mỗi lần gọi model, review gửi nguyên các targets/*.md. Với việc --affects, targets/ là bản copy của cả spec cũ, nên m... · review: code, test · chi tiết: .history/2026-10-11-review-sends-changed-acs
